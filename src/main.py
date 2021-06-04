@@ -2,8 +2,9 @@ import ast
 from check import Checker
 
 src = """
-a = 'x'
+a = 12 
 b = 12
+c = a + b
 """
 
 tree = ast.parse(src)
