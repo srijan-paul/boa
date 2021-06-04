@@ -5,6 +5,7 @@ class Symbol:
     def __init__(self, name: str, type: Type) -> Type:
         self.name = name
         self.type = type
+        self.annotation = None
 
 
 BinOpRules = {
@@ -28,7 +29,7 @@ def find_binop_rule(left, op, right):
         if left == typ[0] and right == typ[1]:
             return type[2]
 
-    return Type._error 
+    return Type._error
 
 
 class Checker:
@@ -49,7 +50,7 @@ class Checker:
     def find_symbol(self, name):
         for scope in self.symbol_stack[::-1]:
             if name in scope:
-                return scope[name].type
+                return scope[name]
 
         return Type._error
 
@@ -96,13 +97,13 @@ class Checker:
 
     def check_constant(self, exp) -> Type:
         typ = Type.primitives[exp.value.__class__.__name__]
-        if not (type is None):
+        if not (typ is None):
             return typ
         return Type.any
 
     def check_name(self, exp):
         name = exp.id
-        typ = self.find_symbol(name)
+        typ = self.find_symbol(name).type
         return typ
 
     def check_binop(self, exp) -> Type:
@@ -113,7 +114,7 @@ class Checker:
         if not BinOpRules[op_name]:
             raise 'Operator ' + op_name + ' Not supported yet'
 
-        typ = find_binop_rule(ltyp , op_name, rtyp)
+        typ = find_binop_rule(ltyp, op_name, rtyp)
         if typ == Type._error:
             raise Exception('Bad binary op')
 

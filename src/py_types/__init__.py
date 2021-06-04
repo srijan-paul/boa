@@ -13,6 +13,12 @@ Type.any = Type('any', True)
 
 Type._error = Type('error', False)
 
+class ConstType(Type):
+    def __init__(self, type, val):
+        self.tag = 'const'
+        self.typ = type
+        self.value = val
+
 Type.primitives = { 
     'int': Type.int,
     'float': Type.float,
