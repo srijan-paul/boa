@@ -2,14 +2,13 @@ import ast
 from check import Checker
 
 src = """
-a = 12 
-b = 12
-c = a + b
+number = 123 + 3.0 / 1.0
+string = 'abc'
+bad = number + string
 """
 
 tree = ast.parse(src)
-print(tree.body[0].__class__.__name__)
-print(ast.dump(tree))
+# print(ast.dump(tree))
 
-checker = Checker(tree)
+checker = Checker(tree, src)
 checker.check()
