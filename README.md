@@ -13,4 +13,4 @@ The above code is obviously incorrect, because we're trying to
 add a float and a string, but the Python interpreter won't know that until this chunk of code is executed.
 With PyFlow, mistakes like these can be caught easily even before we have any test coverage:
 
-<img src="./media/ss1.png" height=40/>
+<img src="./media/ss1.png" height=50/>
