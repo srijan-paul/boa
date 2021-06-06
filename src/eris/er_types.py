@@ -3,6 +3,9 @@ class Type:
         self.tag = tag
         self.is_primitive = is_primitive
 
+    def __str__(self):
+        return '< Type' + self.tag + ' >'
+
 Type.int = Type('int', True)
 Type.float = Type('float', True)
 Type.str = Type('str', True)

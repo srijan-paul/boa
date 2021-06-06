@@ -1,0 +1,1 @@
+py src/eris/cli.py $1

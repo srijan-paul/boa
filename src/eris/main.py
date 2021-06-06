@@ -1,5 +1,5 @@
 import ast
-from .checker import Checker
+from checker import Checker
 
 src = """
 number = 123 + 3.0 / 1.0

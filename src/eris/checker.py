@@ -1,5 +1,5 @@
-from ..py_types import Type
-from ..error_report import report, Location
+from er_types import Type
+from error_report import report, Location
 
 
 class TypeInfo:
@@ -70,7 +70,8 @@ def find_binop_rule(left, op, right) -> TypeInfo:
     rule = BinOpRules[op]
 
     for type_rule in rule:
-        if left == type_rule[0] and right == type_rule[1]:
+        if left == type_rule[0] and right == type_rule[1]\
+                or left == type_rule[1] and right == type_rule[0]:
             return TypeInfo(type_rule[2])
 
     return TypeInfo.err_type()
@@ -106,6 +107,8 @@ class Checker:
         pass
 
     def error(self, msg: str, node):
+        if self.has_error:
+            return
         self.on_error(self.src, msg, node)
         self.has_error = True
 
@@ -140,8 +143,8 @@ class Checker:
     def check_return(self, stat):
         pass
 
-    # Assignment returns the type of it's RHS
     def check_assign(self, stat) -> TypeInfo:
+        """Type checks [stat] and returns the type of the RHS"""
         lhs = stat.targets
         rhs = stat.value
         assert len(lhs) == 1, "Only single assignment statements are supported"
@@ -171,8 +174,8 @@ class Checker:
 
         return method(exp)
 
-    # Constant can only be a primitive (or a string)
     def check_constant(self, exp) -> TypeInfo:
+        """Type check [exp] and return it's TypeInfo. [exp] must be a constant."""
         typ = Type.primitives[exp.value.__class__.__name__]
         if not (typ is None):
             return TypeInfo(typ, exp.value)
