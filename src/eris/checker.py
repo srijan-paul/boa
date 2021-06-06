@@ -1,4 +1,4 @@
-from er_types import Type
+from er_types import Type, types_consistent
 from error_report import report, Location
 
 
@@ -82,6 +82,11 @@ class Checker:
         self.ast = ast
         self.func_stack = []
         self.symbol_stack = []
+        self.types =  {} 
+
+        for k in Type.primitives.keys():
+            self.types[k] = Type.primitives[k]
+
         self.has_error = False
         self.src = src
         self.error_msg = None
@@ -143,6 +148,26 @@ class Checker:
     def check_return(self, stat):
         pass
 
+    def check_annassign(self, stat):
+        lhs = stat.target
+        rhs = stat.value
+        name = lhs.id
+
+        existing = self.find_symbol(name)
+        typ_info = self.check_exp(rhs)
+        anot_type = self.parse_annotation(stat.annotation)
+
+        if not types_consistent(typ_info.typ, anot_type):
+            self.error(f"Cannot assign from '{typ_info.typ}' to '{anot_type}'.", stat.annotation)
+            return Type._error
+
+        if existing.type_info.typ != Type._error:
+            existing.type_info = typ_info
+            return typ_info
+
+        return Type._error
+
+
     def check_assign(self, stat) -> TypeInfo:
         """Type checks [stat] and returns the type of the RHS"""
         lhs = stat.targets
@@ -200,3 +225,22 @@ class Checker:
             self.error(err_str, exp)
 
         return res_type_info
+
+    # Type annotation parsing 
+    def parse_annotation(self, exp):
+        tag = exp.__class__.__name__
+        method_name = 'type_' + tag.lower()
+        method = getattr(Checker, method_name, None)
+        if method is None:
+            self.error('Unrecognized type annotation', exp)
+            return
+        return method(self, exp)
+
+    def type_name(self, exp):
+        id = exp.id
+        if id in self.types:
+            return self.types[id]
+        return self.error('Unorecognized type name', exp)
+
+
+    # Type resolution

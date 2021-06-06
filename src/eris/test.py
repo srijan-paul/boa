@@ -3,12 +3,14 @@ from checker import Checker
 from er_types import Type
 import ast
 
+
 def parse(src: str):
     return ast.parse(src)
 
 
 def silent_error(_, _msg, _node):
     pass
+
 
 def check(src: str):
     checker = Checker(parse(src), src)
@@ -32,7 +34,10 @@ class CheckerTest(unittest.TestCase):
     def test_var(self):
         checker = check('a = 1; b = "x"; c = a + b;')
         self.assertEqual(checker.error_msg, "operator '+' cannot be applied to 'int' and 'str'", 'Variables')
-        
+
+    def test_annotation(self):
+        self.assertEqual(errmsg('x: int = "x"'), "Cannot assign from 'str' to 'int'.",
+                         "type annotation in assignment")
 
 
 if __name__ == '__main__':

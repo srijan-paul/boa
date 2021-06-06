@@ -4,7 +4,8 @@ class Type:
         self.is_primitive = is_primitive
 
     def __str__(self):
-        return '< Type' + self.tag + ' >'
+        return self.tag
+
 
 Type.int = Type('int', True)
 Type.float = Type('float', True)
@@ -29,3 +30,9 @@ Type.primitives = {
     'bool': Type.bool,
     'NoneType': Type.none,
 }
+
+
+def types_consistent(dst: Type, src: Type) -> bool:
+    if dst == src:
+        return True
+    return False
