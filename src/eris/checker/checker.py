@@ -1,5 +1,5 @@
-from py_types import Type
-from error_report import report, Location
+from ..py_types import Type
+from ..error_report import report, Location
 
 
 class TypeInfo:
@@ -16,6 +16,7 @@ class Symbol:
     def __init__(self, name: str, t_info: TypeInfo) -> Type:
         self.name = name
         self.type_info = t_info
+        self.annotation = None
 
 
 def as_type(typ_or_tinfo: TypeInfo or Type) -> Type:
@@ -82,6 +83,8 @@ class Checker:
         self.symbol_stack = []
         self.has_error = False
         self.src = src
+        self.error_msg = None
+        self.on_error = report
 
     def enter_scope(self):
         self.symbol_stack.append({})
@@ -92,24 +95,30 @@ class Checker:
     def add_symbol(self, name: str, typ_info: TypeInfo):
         self.symbol_stack[-1][name] = Symbol(name, typ_info)
 
-    def find_symbol(self, name) -> TypeInfo:
+    def find_symbol(self, name) -> Symbol:
         for scope in self.symbol_stack[::-1]:
             if name in scope:
                 return scope[name]
 
-        return TypeInfo(Type._error)
+        return Symbol('<error>', TypeInfo(Type._error))
 
     def error_at():
         pass
 
     def error(self, msg: str, node):
-        report(self.src, msg, node)
+        self.on_error(self.src, msg, node)
         self.has_error = True
+
+        # Only store the first error message
+        if not self.error_msg:
+            self.error_msg = msg
 
     def check(self):
         self.enter_scope()
         for stat in self.ast.body:
             self.check_stat(stat)
+            if self.has_error:
+                return
         self.exit_scope()
 
     def check_stat(self, node):
@@ -140,9 +149,15 @@ class Checker:
         # TODO: handle assignments where the RHS is *not* an identifier
         name = lhs[0].id
 
+        existing = self.find_symbol(name)
         typ_info = self.check_exp(rhs)
-        self.add_symbol(name, typ_info)
 
+        # TODO: handle type annotations.
+        if existing.type_info.typ != Type._error:
+            existing.type_info = typ_info
+            return typ_info
+
+        self.add_symbol(name, typ_info)
         return typ_info
 
     def check_exp(self, exp) -> TypeInfo:
@@ -156,7 +171,7 @@ class Checker:
 
         return method(exp)
 
-    # Constant can only be a primitive (or string)
+    # Constant can only be a primitive (or a string)
     def check_constant(self, exp) -> TypeInfo:
         typ = Type.primitives[exp.value.__class__.__name__]
         if not (typ is None):
