@@ -240,7 +240,7 @@ class Checker:
         id = exp.id
         if id in self.types:
             return self.types[id]
-        return self.error('Unorecognized type name', exp)
+        return self.error('Unrecognized type name', exp)
 
 
     # Type resolution
