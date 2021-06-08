@@ -2,7 +2,10 @@ import ast
 from checker import Checker
 
 src = """
-x: int = False
+a = 10
+b = '20'
+for f in range(a, b):
+  print(i)
 """
 
 tree = ast.parse(src)

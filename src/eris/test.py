@@ -38,6 +38,17 @@ class CheckerTest(unittest.TestCase):
     def test_annotation(self):
         self.assertEqual(errmsg('x: int = "x"'), "Cannot assign from 'str' to 'int'.",
                          "type annotation in assignment")
+        self.assertIsNone(errmsg("x: float = 123.456"), "Annotated decls work as expected")
+
+    def test_for(self):
+        self.assertEqual(errmsg("for i in rnge(10, 1, -1): pass"), 
+            "Expected 'range'", "For loop iter function must be 'range'")
+
+        self.assertEqual(errmsg("for f.x in range(1, 2): pass"), 
+            "Expected variable name", "For loop iterator must be variable")
+
+        self.assertEqual(errmsg("for f in range('1', 2): pass"), 
+            "'range' arguments must be numeric", "for iterator fn args check")
 
 
 if __name__ == '__main__':

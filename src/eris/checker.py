@@ -143,7 +143,7 @@ class Checker:
     def check_functiondef(self, node):
         fname = node.name
         args = node.args
-        raise "Not implemented"
+        raise Exception("Not implemented")
 
     def check_return(self, stat):
         pass
@@ -167,7 +167,6 @@ class Checker:
 
         return Type._error
 
-
     def check_assign(self, stat) -> TypeInfo:
         """Type checks [stat] and returns the type of the RHS"""
         lhs = stat.targets
@@ -187,6 +186,41 @@ class Checker:
 
         self.add_symbol(name, typ_info)
         return typ_info
+
+
+    def check_for(self, stat):
+        if stat.target.__class__.__name__ != 'Name':
+            self.error("Expected variable name", stat.target)
+            return False
+
+        if stat.iter.__class__.__name__ != 'Call':
+            self.error("Expected 'range'")
+            return False
+        
+        for_iter = stat.iter
+        iter_name = stat.iter.func
+
+        assert iter_name.__class__.__name__ == 'Name', "Impossible"
+        fname = iter_name.id
+        if fname != 'range':
+            self.error("Expected 'range'", iter_name)
+            return False
+
+        if len(for_iter.args) < 2:
+            self.error("'range' must have at least 2 arguments", iter_name) 
+            return False
+
+        for_iter.args[0]._type_info = self.check_exp(for_iter.args[0])
+        for_iter.args[1]._type_info = self.check_exp(for_iter.args[1])
+        if len(for_iter.args) == 3:
+            for_iter.args[2]._type_info = self.check_exp(for_iter.args[2])
+
+        for arg in for_iter.args:
+            typ = arg._type_info.typ
+            if typ != Type.float and typ != Type.int:
+                self.error("'range' arguments must be numeric", arg)
+                return False
+
 
     def check_exp(self, exp) -> TypeInfo:
         exp_kind = exp.__class__.__name__
@@ -208,8 +242,9 @@ class Checker:
 
     def check_name(self, exp) -> TypeInfo:
         name = exp.id
-        typ = self.find_symbol(name).type_info
-        return typ
+        type_info = self.find_symbol(name).type_info
+        exp._decl = type_info
+        return type_info
 
     def check_binop(self, exp) -> TypeInfo:
         op_name = exp.op.__class__.__name__
@@ -228,19 +263,20 @@ class Checker:
 
     # Type annotation parsing 
     def parse_annotation(self, exp):
+        """Parses a type annotation and returns a Type object on success, None on failure"""
         tag = exp.__class__.__name__
         method_name = 'type_' + tag.lower()
         method = getattr(Checker, method_name, None)
         if method is None:
             self.error('Unrecognized type annotation', exp)
-            return
+            return False
         return method(self, exp)
 
     def type_name(self, exp):
         id = exp.id
         if id in self.types:
             return self.types[id]
-        return self.error('Unrecognized type name', exp)
+        return self.error(f"Unrecognized type name '{id}'", exp)
 
 
     # Type resolution
