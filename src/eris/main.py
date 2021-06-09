@@ -10,6 +10,3 @@ for f in range(a, b):
 
 tree = ast.parse(src)
 print(ast.dump(tree))
-
-checker = Checker(tree, src)
-checker.check()
