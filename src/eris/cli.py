@@ -17,17 +17,13 @@ class Watcher(object):
         self.args = args
         self.kwargs = kwargs
 
-    # Look for changes
     def look(self):
         stamp = os.stat(self.filename).st_mtime
         if stamp != self._cached_stamp:
             self._cached_stamp = stamp
-            # File has changed, so do something...
-            print('File changed')
             if self.call_func_on_change is not None:
                 self.call_func_on_change(*self.args, **self.kwargs)
 
-    # Keep watching in a loop
     def watch(self):
         while self.running:
             try:
