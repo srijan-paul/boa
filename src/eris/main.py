@@ -1,12 +1,15 @@
 import ast
-from checker import Checker
+from inference import infer_types
+from to_ir import ToIR
 
 src = """
-a = 10
-b = '20'
-for f in range(a, b):
-  print(i)
+a = 1
+b = 2
+c = a + b 
 """
 
 tree = ast.parse(src)
-print(ast.dump(tree))
+infer_types(tree, src)
+irconv = ToIR()
+irconv.do(tree)
+

@@ -26,7 +26,7 @@ class TypeGenerator(ast.NodeVisitor):
         self.errmsg = False
 
         # stores types of all identifiers
-        self.symtab = {}  # str -> Annotated Type
+        self.symtab = {}  # str -> Symbol 
 
         # Used to generate the Type variables
         self.next_var_id = 0
@@ -64,7 +64,7 @@ class TypeGenerator(ast.NodeVisitor):
         typ = self.visit(rhs)
 
         self.symtab[name.id] = typ
-        typ._decl = stat
+        typ._decl = name 
 
     # TODO: optimize trivial operations like 1 * 2, or other
     # cases where the LHS and RHS types are known
@@ -91,7 +91,7 @@ class TypeGenerator(ast.NodeVisitor):
         val = node.value
         if type(val) == str:
             node._type = TypeStr()
-        elif type(val) == int:
+        elif type(val) == int or type(val) == float:
             node._type = TypeNum()
         elif Type(val) == bool:
             node._type = TypeBool()
