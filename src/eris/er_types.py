@@ -13,9 +13,9 @@ class Type:
         return self.tag
 
 
-class TypeInt(Type):
+class TypeNum(Type):
     def __init__(self):
-        super().__init__('int', True)
+        super().__init__('num', True)
 
 
 class TypeBool(Type):
@@ -52,7 +52,7 @@ class ConstType(Type):
 
 
 Type.primitives = {
-    'int': TypeInt,
+    'num': TypeNum,
     'str': TypeStr,
     'bool': TypeBool
 }

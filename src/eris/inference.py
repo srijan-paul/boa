@@ -1,5 +1,5 @@
 import ast
-from er_types import Type, TypeBool, TypeInt, TypeStr, types_consistent, Symbol, TypeInfo, TypeVar
+from er_types import Type, TypeBool, TypeNum, TypeStr, types_consistent, Symbol, TypeInfo, TypeVar
 import debug
 from error_report import report
 
@@ -26,7 +26,7 @@ class TypeGenerator(ast.NodeVisitor):
         self.errmsg = False
 
         # stores types of all identifiers
-        self.symtab = {}  # str -> Type
+        self.symtab = {}  # str -> Annotated Type
 
         # Used to generate the Type variables
         self.next_var_id = 0
@@ -64,6 +64,7 @@ class TypeGenerator(ast.NodeVisitor):
         typ = self.visit(rhs)
 
         self.symtab[name.id] = typ
+        typ._decl = stat
 
     # TODO: optimize trivial operations like 1 * 2, or other
     # cases where the LHS and RHS types are known
@@ -91,7 +92,7 @@ class TypeGenerator(ast.NodeVisitor):
         if type(val) == str:
             node._type = TypeStr()
         elif type(val) == int:
-            node._type = TypeInt()
+            node._type = TypeNum()
         elif Type(val) == bool:
             node._type = TypeBool()
         else:
@@ -111,9 +112,10 @@ class Equation:
         self.node = node
 
     def __str__(self):
-        return str(self.lhs).ljust(4) + ' ⊂ ' + str(self.rhs).rjust(4)
-    
+        return str(self.lhs).ljust(4) + ' :: ' + str(self.rhs).rjust(4)
+
     __repr__ = __str__
+
 
 class EqGenerator(ast.NodeVisitor):
     def __init__(self, ast):
@@ -127,7 +129,10 @@ class EqGenerator(ast.NodeVisitor):
     def visit_Module(self, node: ast.Module):
         for stat in node.body:
             self.visit(stat)
-    
+
+    def visit_Name(self, _):
+        pass  # Name types are resolved in the type var generation pass
+
     def visit_Assign(self, node):
         # TODO: handle RHS that isn't a single symbol
         self.visit(node.value)
@@ -135,8 +140,8 @@ class EqGenerator(ast.NodeVisitor):
     def visit_Constant(self, node):
         assert not isinstance(node._type, TypeVar)
 
-
     # TODO: add type traits
+
     def visit_BinOp(self, node):
         """
         Generate type equations from binary operator application nodes.
@@ -155,14 +160,53 @@ class EqGenerator(ast.NodeVisitor):
         """
         self.visit(node.left)
         self.visit(node.right)
-        
-        self.eqs.append(Equation(node.left._type, TypeInt(), node.left))
-        self.eqs.append(Equation(node.right._type, TypeInt(), node.right))
-        self.eqs.append(Equation(node._type, TypeInt(), node))
+
+        self.eqs.append(Equation(node.left._type, TypeNum(), node.left))
+        self.eqs.append(Equation(node.right._type, TypeNum(), node.right))
+        self.eqs.append(Equation(node._type, TypeNum(), node))
 
     def generic_visit(self, node):
         print(f'Eq generation, skipping: {classname(node)}')
 
+
+def unify_var(typvar: Type, typ: Type, typmap: dict):
+    assert isinstance(typvar, TypeVar)
+    if typvar.tag in typmap:
+        return unify(typmap[typvar], typ, typmap)
+
+    typmap[typvar.tag] = typ
+    return typmap
+
+
+def unify(l_type: Type, r_type: Type, typmap: dict):
+    if typmap is None:
+        return None
+
+    if l_type == r_type:
+        return typmap
+
+    if isinstance(l_type, TypeVar):
+        return unify_var(l_type, r_type, typmap)
+    elif isinstance(r_type, TypeVar):
+        return unify_var(r_type, l_type, typmap)
+
+
+def solve_eqs(eqs):
+    typsub = {}
+    for eq in eqs:
+        unify(eq.lhs, eq.rhs, typsub)
+    return typsub
+
+
+def substitute_types(module, typsub, src):
+    for node in ast.walk(module):
+        typ = getattr(node, '_type', None)
+        if typ and isinstance(typ, TypeVar):
+            node_src = ast.get_source_segment(src,  node)
+            if typ.tag in typsub:
+                node._type = typsub[typ.tag]
+            else:
+                report(src, f'Inconsistent type for "{node_src}"', node)
 
 
 def infer_types(ast, src):
@@ -175,13 +219,18 @@ def infer_types(ast, src):
     debug.dump_eqs(src, eqs)
 
     # 3. Use unification to derive the types [TODO]
+    typsub = solve_eqs(eqs)
+    print('\n--- Substitutions ---\n')
+    for k in typsub.keys():
+        print('$'+k[1:], '→', typsub[k])
+
+    substitute_types(ast, typsub, src)
 
 
 src = """
 a = 1
-b = 2
-d = 123
-c = a * b + d 
+b = a
+b = b + 1
 """
 
 infer_types(ast.parse(src), src)
