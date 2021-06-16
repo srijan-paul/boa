@@ -1,12 +1,40 @@
 import ir
+from er_types import Type, TypeBool, TypeNum, TypeStr, types_consistent, Symbol, TypeInfo, TypeVar
+
 
 def classname(obj):
     return obj.__class__.__name__
 
+
+ir_op = {
+    'Add': [['num', 'num', TypeNum], ['str', 'str', TypeStr]],
+    'Div': [['num', 'num', TypeNum]],
+    'Mult': [['num', 'num', TypeNum], ['str', 'num', TypeStr]],
+    'Sub': [['num', 'num', TypeNum]]
+}
+
+
+def find_op_type(lhs, op, rhs):
+    assert op in ir_op
+    typs = ir_op[op]
+
+    for typ in typs:
+        if (lhs.tag == typ[0] and rhs.tag == typ[1]) or (rhs.tag == typ[0] and lhs.tag == typ[1]):
+            return typ[2]()
+
+    return None
+
+
+class DummyNode:
+    def __init__(self, typ):
+        assert isinstance(typ, Type)
+        self._type = typ
+
+
 class ToIR:
     def __init__(self):
-        self.loc_id_of_decl = {} # int -> ast.Name
-        self.visited_decls = set() # { ast.Name }
+        self.loc_id_of_decl = {}  # int -> ast.Name
+        self.visited_decls = set()  # { ast.Name }
         self.func = ir.Func('$toplevel')
 
     def add_local(self, decl):
@@ -17,8 +45,8 @@ class ToIR:
         self.func.vars.append(decl)
         return len(self.func.vars) - 1
 
-    def add_temp_local(self):
-        self.func.vars.append(None)
+    def add_temp_local(self, typ):
+        self.func.vars.append(DummyNode(typ))
         return len(self.func.vars) - 1
 
     def emit(self, instr):
@@ -61,7 +89,6 @@ class ToIR:
             self.loc_id_of_decl[lhs] = id
             self.emit(ir.Mov(id, val))
 
-
     def do_annassign():
         pass
 
@@ -89,18 +116,24 @@ class ToIR:
         lhs = self.do_exp(node.left)
         rhs = self.do_exp(node.right)
 
-        loc_id = self.add_temp_local()
-        self.emit(ir.BinOp(loc_id, lhs, self.ir_op(op), rhs))
+        assert op in ir_op, f"Invalid operator '{op}'"
+        typ = find_op_type(node.left._type, op, node.right._type)
+        assert typ
+
+        loc_id = self.add_temp_local(typ)
+        self.emit(ir.BinOp(loc_id, lhs, self.op_to_s(op), rhs))
         return ir.LocalVar(loc_id)
 
-    def ir_op(self, op):
-        if op == 'Add': return '+'
-        if op == 'Mult': return '*'
-        if op == 'Div': return '/'
-        if op == 'Sub': return '-'
+    def op_to_s(self, op):
+        if op == 'Add':
+            return '+'
+        if op == 'Mult':
+            return '*'
+        if op == 'Div':
+            return '/'
+        if op == 'Sub':
+            return '-'
         raise Exception("Not implemented")
-
-
 
     def do_name(self, node):
         key = node._type._decl
