@@ -2,6 +2,7 @@ import ast
 from er_types import Type, TypeBool, TypeNum, TypeStr, types_consistent, Symbol, TypeInfo, TypeVar
 import debug
 from error_report import report
+import textwrap
 
 
 def visitor_error(self, msg, node):
@@ -26,7 +27,7 @@ class TypeGenerator(ast.NodeVisitor):
         self.errmsg = False
 
         # stores types of all identifiers
-        self.symtab = {}  # str -> Symbol 
+        self.symtab = {}  # str -> Symbol
 
         # Used to generate the Type variables
         self.next_var_id = 0
@@ -64,7 +65,8 @@ class TypeGenerator(ast.NodeVisitor):
         typ = self.visit(rhs)
 
         self.symtab[name.id] = typ
-        typ._decl = name 
+        typ._decl = name
+        name._type = typ
 
     # TODO: optimize trivial operations like 1 * 2, or other
     # cases where the LHS and RHS types are known
@@ -227,10 +229,11 @@ def infer_types(ast, src):
     substitute_types(ast, typsub, src)
 
 
-src = """
-a = 1
-b = a
-b = b + 1
-"""
+if __name__ == '__main__':
+    src = textwrap.dedent("""
+        a = 1
+        b = a
+        b = b + 1
+    """)
 
-infer_types(ast.parse(src), src)
+    infer_types(ast.parse(src), src)

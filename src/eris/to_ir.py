@@ -24,6 +24,8 @@ def find_op_type(lhs, op, rhs):
 
     return None
 
+class Dummy:
+    pass
 
 class DummyNode:
     def __init__(self, typ):
@@ -35,7 +37,8 @@ class ToIR:
     def __init__(self):
         self.loc_id_of_decl = {}  # int -> ast.Name
         self.visited_decls = set()  # { ast.Name }
-        self.func = ir.Func('$toplevel')
+        self.module  = ir.Module('main')
+        self.func    = self.module.funcs[0]
 
     def add_local(self, decl):
         """Adds a local variable referencing [decl] to the 
@@ -83,8 +86,6 @@ class ToIR:
             # declare new variable in the current function's
             # scope
             val = self.do_exp(rhs)
-            if classname(val) == 'LocalVar':
-                return val
             id = self.add_local(lhs)
             self.loc_id_of_decl[lhs] = id
             self.emit(ir.Mov(id, val))
@@ -121,7 +122,8 @@ class ToIR:
         assert typ
 
         loc_id = self.add_temp_local(typ)
-        self.emit(ir.BinOp(loc_id, lhs, self.op_to_s(op), rhs))
+        cmd = ir.Mov(loc_id, ir.BinOp(loc_id, lhs, self.op_to_s(op), rhs))
+        self.emit(cmd)
         return ir.LocalVar(loc_id)
 
     def op_to_s(self, op):

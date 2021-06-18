@@ -1,19 +1,36 @@
+from er_types import *
+
 class Seq:
     def __init__(self):
         self.cmds = []
 
 
 class Func:
-    def __init__(self, name):
+    def __init__(self, name, typ):
         self.name = name
         self.body = Seq()
+        self.typ = typ
         self.vars = []  # list of int (var ids)
 
     def __str__(self):
-        s = 'function ' + self.name + ' {'
+        s = f'function {self.name}: {str(self.typ)}' + '{'
         for cmd in self.body.cmds:
             s += '\n\t' + str(cmd)
         return s + '\n}\n'
+
+class Module:
+    def __init__(self, name: str):
+        self.name  = name
+        self.funcs = []
+
+        # top level function for toplevel code that
+        # goes in main
+        self.funcs.append(Func('main', TypeFunc([], TypeInt())))
+
+    def __str__(name):
+        return 'Module: ' + self.name
+
+    __repr__ = __str__
 
 
 class LocalVar:

@@ -13,6 +13,10 @@ class Type:
         return self.tag
 
 
+class TypeInt(Type):
+    def __init__(self):
+        super().__init__('int', True)
+
 class TypeNum(Type):
     def __init__(self):
         super().__init__('num', True)
@@ -37,6 +41,20 @@ class TypeVar(Type):
 
     __repr__ = __str__
 
+class TypeFunc(Type):
+    def __init__(self, arg_types, ret_type):
+        assert isinstance(arg_types, list) and isinstance(ret_type, Type)
+        self.arg_types = arg_types
+        self.ret_type  = ret_type
+
+
+    def __str__(self):
+        arg_strs = [str(typ) for typ in self.arg_types]
+        return f"({','.join(arg_strs)}) -> {str(self.ret_type)} "
+
+
+    __repr__ = __str__
+
 
 class TypeError(Type):
     def __init__(self):
@@ -49,7 +67,6 @@ class ConstType(Type):
         self.typ = type
         self.value = val
         self.is_primitive = False
-
 
 Type.primitives = {
     'num': TypeNum,
