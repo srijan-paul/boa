@@ -2,8 +2,7 @@ import os
 import sys
 import time
 
-from checker import Checker
-from ast import parse
+from driver import compile_py
 
 
 class Watcher(object):
@@ -37,12 +36,12 @@ class Watcher(object):
                 # Action on file not found
                 print('File not found')
                 return
-            except:
-                print('Unhandled error: %s' % sys.exc_info()[0])
+            except Exception as inst:
+                raise inst
 
 
 file_path = None
-
+out_path  = None
 
 def on_change():
     os.system('clear')
@@ -51,10 +50,18 @@ def on_change():
     print(f"[{curr_time}] checked '{file_path}'\n")
 
     try:
-        checker = Checker(parse(src), src)
-        checker.check()
-    except SyntaxError:
+        code = compile_py(src)
+        if not code:
+            return None
+        
+        out_file = open(out_path, "w")
+        out_file.write(code)
+        out_file.close()
+        os.system(f'clang-format -i {out_path}')
+    except SyntaxError as s:
         print('Syntax error')
+    except (NameError, AttributeError) as err:
+        raise err
 
 
 if __name__ == '__main__':
@@ -63,5 +70,6 @@ if __name__ == '__main__':
         print('Usage: watch <filename>')
     else:
         file_path = argv[1]
+        out_path = file_path.split('.')[0] + '.c'
         watcher = Watcher(file_path, call_func_on_change=on_change)
         watcher.watch()

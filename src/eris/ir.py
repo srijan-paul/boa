@@ -18,6 +18,17 @@ class Func:
             s += '\n\t' + str(cmd)
         return s + '\n}\n'
 
+
+class Call:
+    def __init__(self, func: Func, args):
+        self.func = func
+        self.args = args
+
+    def __str__(self):
+        return self.func.name + '(' + ', '.join([str(x) for x in self.args]) + ')'
+
+    __repr__ = __str__
+
 class Module:
     def __init__(self, name: str):
         self.name  = name
@@ -39,6 +50,16 @@ class LocalVar:
 
     def __str__(self):
         return 'x' + str(self.id)
+
+    __repr__ = __str__
+
+
+class Builtin:
+    def __init__(self, name: str):
+        self.name = name
+
+    def __str__(self):
+        return self.name
 
     __repr__ = __str__
 

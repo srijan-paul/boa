@@ -20,6 +20,7 @@ def cvar(id: str):
 class Coder:
     def __init__(self):
         self.ccode = ''
+        self.has_error = False
 
     def end():
         pass
@@ -39,7 +40,7 @@ class Coder:
 
     def gen_c(self, module):
         # main
-        return self.emit(module.funcs[0])
+        return  '#include <stdio.h>\n#include <stdlib.h>\n' + self.emit(module.funcs[0])
 
     def emit(self, ir):
         tag = ir.__class__.__name__
@@ -74,7 +75,6 @@ class Coder:
             'cmds': '\n'.join([self.emit(cmd) for cmd in seq.cmds])
         })
     
-
     def emit_LocalVar(self, var):
         return cvar(var.id)
 

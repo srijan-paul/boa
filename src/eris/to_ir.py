@@ -1,6 +1,6 @@
 import ir
 from er_types import Type, TypeBool, TypeNum, TypeStr, types_consistent, Symbol, TypeInfo, TypeVar
-
+from builtins_ import builtins
 
 def classname(obj):
     return obj.__class__.__name__
@@ -39,6 +39,7 @@ class ToIR:
         self.visited_decls = set()  # { ast.Name }
         self.module  = ir.Module('main')
         self.func    = self.module.funcs[0]
+        self.has_error = False
 
     def add_local(self, decl):
         """Adds a local variable referencing [decl] to the 
@@ -105,6 +106,14 @@ class ToIR:
             return '<nop>'
         return method(node)
 
+    def do_expr(self, expr):
+        self.emit(self.do_exp(expr.value))
+
+    def do_call(self, call_exp):
+        func = self.do_exp(call_exp.func)
+        args = [ self.do_exp(arg) for arg in call_exp.args ] 
+        return ir.Call(func, args)
+
     def do_constant(self, node):
         val = node.value
         if type(val) == int or type(val) == float:
@@ -138,6 +147,9 @@ class ToIR:
         raise Exception("Not implemented")
 
     def do_name(self, node):
+        if node.id in builtins:
+            return ir.Builtin(node.id)
+
         key = node._type._decl
         loc_id = self.loc_id_of_decl[key]
         return ir.LocalVar(loc_id)
