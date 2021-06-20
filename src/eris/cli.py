@@ -42,6 +42,8 @@ class Watcher(object):
 
 file_path = None
 out_path  = None
+out_bin   = None
+boa_lib   = 'lib_boa/boa_runtime.c'
 
 def on_change():
     os.system('clear')
@@ -58,6 +60,9 @@ def on_change():
         out_file.write(code)
         out_file.close()
         os.system(f'clang-format -i {out_path}')
+        print('formatted')
+        os.system(f'gcc {out_path} {boa_lib} -o {out_bin}')
+        print('compiled')
     except SyntaxError as s:
         print('Syntax error')
     except (NameError, AttributeError) as err:
@@ -71,5 +76,6 @@ if __name__ == '__main__':
     else:
         file_path = argv[1]
         out_path = file_path.split('.')[0] + '.c'
+        out_bin = file_path.split('.')[0] + '.exe'
         watcher = Watcher(file_path, call_func_on_change=on_change)
         watcher.watch()

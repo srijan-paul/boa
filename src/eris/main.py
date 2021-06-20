@@ -3,8 +3,9 @@ import driver
 
 src = """
 a = 1
-b = 2
-print(a + b)
+for i in range(1, 10):
+    print(a)
 """
 
+print(ast.dump(ast.parse(src)))
 print(driver.compile_py(src))

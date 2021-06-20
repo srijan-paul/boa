@@ -5,6 +5,15 @@ class Seq:
         self.cmds = []
 
 
+class Stat:
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def __str__(self):
+        return str(self.cmd)
+
+    __repr__ = __str__
+
 class Func:
     def __init__(self, name, typ):
         self.name = name
@@ -103,4 +112,17 @@ class BinOp(Cmd):
     def __str__(self):
         return f'x{self.dst} ← {self.left} {self.op} {self.right}'
       
+    __repr__ = __str__
+
+class For:
+    def __init__(self, var, from_, to, step, body):
+        self.var = var
+        self.from_ = from_
+        self.to = to
+        self.step = step or Number(1)
+        self.body = body
+
+    def __str__(self):
+        return f'for i = {self.from_}, {self.to}, {self.step}:\n{str(self.body)}'
+
     __repr__ = __str__

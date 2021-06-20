@@ -2,6 +2,7 @@ import ir
 import re
 from textwrap import dedent
 from er_types import *
+from builtins_ import builtins
 
 
 def render(fmt: str, vars: dict):
@@ -16,6 +17,15 @@ def render(fmt: str, vars: dict):
 
 def cvar(id: str):
     return 'x' + str(id)
+
+
+def builtin_print(args):
+    assert len(args) == 1, "Only single argument print is supported"
+    arg = args[0]
+    typ = arg._type
+    if isinstance(typ, TypeNum):
+        return 'print_float'
+
 
 class Coder:
     def __init__(self):
@@ -40,7 +50,7 @@ class Coder:
 
     def gen_c(self, module):
         # main
-        return  '#include <stdio.h>\n#include <stdlib.h>\n' + self.emit(module.funcs[0])
+        return  '#include <stdio.h>\n#include <stdlib.h>\n#include "../lib_boa/boa_runtime.h"\n' + self.emit(module.funcs[0])
 
     def emit(self, ir):
         tag = ir.__class__.__name__
@@ -55,6 +65,18 @@ class Coder:
     def emit_decls(self, vars):
         return '\n'.join([f'{self.c_typ(vars[i]._type)} {cvar(i)};' for i in range(0, len(vars))])
 
+
+    def emit_Seq(self, ir):
+        return ';\n'.join([self.visit(cmd) for cmd in ir.cmds]) + ';\n'
+
+    def emit_Stat(self, ir):
+        return self.emit(ir.cmd) + ';\n'
+
+    def c_to_dyn(self, v, typ):
+        v = self.emit(v)
+        if isinstance(typ, TypeNum): return f'bNumber({v})'
+        raise Exception("Not implemented")
+
     def emit_Func(self, func):
         return render(dedent("""
             $decl {
@@ -68,6 +90,37 @@ class Coder:
             'var_decls': self.emit_decls(func.vars),
             'opt_ret': 'return 0;' if func.name == 'main' else '',
         })
+
+
+    def emit_For(self, stat):
+        from_, to, step = stat.from_, stat.to, stat.step
+        return render(dedent("""
+            for ($var = $start; $var < $to; $var += $step) {
+                $body
+            }
+        """), {
+            'var': self.emit(stat.var),
+            'start': self.emit(from_),
+            'to': self.emit(to),
+            'step': self.emit(step),
+            'body': self.emit(stat.body)
+        })
+
+
+    def emit_Call(self, call):
+        func = call.func
+        if isinstance(func, ir.Builtin):
+            builtin = builtins[func.name]
+            c_args = []
+            for i in range(len(call.args)):
+                arg = call.args[i]
+                assert isinstance(builtin.typ, TypeFunc)
+                typ = builtin.typ.arg_types[i]
+            c_args = ', '.join([self.c_to_dyn(arg, typ) for arg in call.args])
+            return f'{builtin.cname}({c_args})'
+            
+
+        raise Exception("Not implemented calls")
 
 
     def emit_Seq(self, seq):

@@ -55,10 +55,18 @@ class TypeFunc(Type):
 
     __repr__ = __str__
 
+class TypeAny(Type):
+    def __init__(self):
+        super().__init__('any')
+
 
 class TypeError(Type):
     def __init__(self):
         super().__init__('< error >')
+
+class TypeNone(Type):
+    def __init__(self):
+        super().__init__('None')
 
 
 class ConstType(Type):

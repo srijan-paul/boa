@@ -69,6 +69,35 @@ class TypeGenerator(ast.NodeVisitor):
         typ._decl = name
         name._type = typ
 
+
+    def visit_stats(self, stats):
+        for stat in stats:
+            self.visit(stat)
+            if self.has_error: return
+
+    def visit_For(self, stat: ast.For):
+        iter_var = stat.target
+        assert isinstance(iter_var, ast.Name), "Only variable iterators are supported"
+
+        self.symtab[iter_var.id] = TypeNum()
+        iter_var._type = self.symtab[iter_var.id]
+        self.symtab[iter_var.id]._decl = iter_var
+
+        iter_call = stat.iter
+        if not isinstance(iter_call, ast.Call) or not isinstance(iter_call.func, ast.Name) or iter_call.func.id != 'range':
+            self.error("only 'range' based for loops are supported right now.", iter_call)
+            return False
+
+        if len(iter_call.args) != 2 and len(iter_call.args) != 3:
+            self.error(f"expected 2-3 arguments for range based for-loop (found {len(iter_call.args)})", iter_call)
+            return False
+
+        self.visit(iter_call.args[0])
+        self.visit(iter_call.args[1])
+        if len(iter_call.args) == 3: self.visit(iter_call.args[2])
+
+        self.visit_stats(stat.body)
+
     # TODO: optimize trivial operations like 1 * 2, or other
     # cases where the LHS and RHS types are known
     def visit_BinOp(self, node: ast.BinOp):
@@ -83,6 +112,7 @@ class TypeGenerator(ast.NodeVisitor):
 
     def visit_Name(self, node: ast.Name):
         id = node.id
+        print(id)
         if id in self.symtab:
             node._type = self.symtab[id]
             return node._type
@@ -140,6 +170,7 @@ class EqGenerator(ast.NodeVisitor):
     def __init__(self, ast):
         self.eqs = []
         self.ast = ast
+        self.has_error = False
 
     def generate(self):
         self.visit(self.ast)
@@ -151,6 +182,10 @@ class EqGenerator(ast.NodeVisitor):
 
     def visit_Name(self, _):
         pass  # Name types are resolved in the type var generation pass
+
+    def visit_stats(self, stats: list):
+        for stat in stats:
+            self.visit(stat)
 
     def visit_Assign(self, node):
         # TODO: handle RHS that isn't a single symbol
@@ -166,6 +201,25 @@ class EqGenerator(ast.NodeVisitor):
         self.visit(call_exp.func)
         for arg in call_exp.args:
             self.visit(arg)
+
+    def visit_For(self, stat):
+        iter_var = stat.target
+        assert isinstance(iter_var, ast.Name), "Only variable iterators are supported"
+
+        iter_call = stat.iter
+        if not isinstance(iter_call, ast.Call) or not isinstance(iter_call.func, ast.Name) or iter_call.func.id != 'range':
+            self.error("only 'range' based for loops are supported right now.", iter_call)
+            return False
+
+        if len(iter_call.args) != 2 and len(iter_call.args) != 3:
+            self.error(f"expected 2-3 arguments for range based for-loop (found {len(iter_call.args)})", iter_call)
+            return False
+
+        self.visit(iter_call.args[0])
+        self.visit(iter_call.args[1])
+        if len(iter_call.args) == 3: self.visit(iter_call.args[2])
+
+        self.visit_stats(stat.body)
 
     # TODO: add type traits
 

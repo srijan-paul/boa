@@ -39,6 +39,7 @@ class ToIR:
         self.visited_decls = set()  # { ast.Name }
         self.module  = ir.Module('main')
         self.func    = self.module.funcs[0]
+        self.body    = self.func.body
         self.has_error = False
 
     def add_local(self, decl):
@@ -54,12 +55,12 @@ class ToIR:
         return len(self.func.vars) - 1
 
     def emit(self, instr):
-        self.func.body.cmds.append(instr)
+        self.body.cmds.append(instr)
 
     def do(self, module):
         for stat in module.body:
             self.do_stat(stat)
-        print(self.func)
+        # print(self.func)
 
     def do_stat(self, stat):
         method_name = 'do_' + stat.__class__.__name__.lower()
@@ -91,10 +92,30 @@ class ToIR:
             self.loc_id_of_decl[lhs] = id
             self.emit(ir.Mov(id, val))
 
-    def do_annassign():
-        pass
 
-    def do_for():
+    def do_for(self, stat):
+        iter_var = stat.target
+        loc_id = self.add_local(iter_var)
+        self.loc_id_of_decl[iter_var] = loc_id
+        # print(iter_var)
+
+        iter_call = stat.iter
+        
+        from_ = self.do_exp(iter_call.args[0])
+        to    = self.do_exp(iter_call.args[1])
+        step  = self.do_exp(iter_call.args[2]) if len(iter_call.args) == 3 else None
+
+        body      = ir.Seq()
+        prev_body = self.body
+        self.body = body
+        for stat in stat.body:
+            self.do_stat(stat)
+
+        self.body = prev_body
+        self.emit(ir.For(ir.LocalVar(loc_id), from_, to, step, body))
+
+
+    def do_annassign():
         pass
 
     def do_exp(self, node):
@@ -107,7 +128,7 @@ class ToIR:
         return method(node)
 
     def do_expr(self, expr):
-        self.emit(self.do_exp(expr.value))
+        self.emit(ir.Stat(self.do_exp(expr.value)))
 
     def do_call(self, call_exp):
         func = self.do_exp(call_exp.func)
@@ -151,5 +172,6 @@ class ToIR:
             return ir.Builtin(node.id)
 
         key = node._type._decl
+        # print(key, node.id)
         loc_id = self.loc_id_of_decl[key]
         return ir.LocalVar(loc_id)

@@ -1,1 +1,1 @@
-python3 src/eris/cli.py $1
+python src/eris/cli.py $1
