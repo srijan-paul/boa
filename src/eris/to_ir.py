@@ -1,6 +1,8 @@
 import ir
+import ast
 from er_types import Type, TypeBool, TypeNum, TypeStr, types_consistent, Symbol, TypeInfo, TypeVar
 from builtins_ import builtins
+from error_report import report
 
 def classname(obj):
     return obj.__class__.__name__
@@ -42,22 +44,41 @@ class ToIR:
         self.body    = self.func.body
         self.has_error = False
 
+    def error(self, msg, node):
+        if self.has_error:
+            return
+        report(self.src, msg, node)
+        self.has_error = True
+
     def add_local(self, decl):
         """Adds a local variable referencing [decl] to the 
         body of the current function and returns an ID that can be
         used to refer to this local"""
         self.visited_decls.add(decl)
         self.func.vars.append(decl)
-        return len(self.func.vars) - 1
+        
+        loc_id =  len(self.func.vars) - 1
+        
+        self.loc_id_of_decl[decl] = loc_id
+        # used for debug comment generation
+        decl._text = ast.get_source_segment(self.src, decl)
+        return loc_id
 
-    def add_temp_local(self, typ):
-        self.func.vars.append(DummyNode(typ))
-        return len(self.func.vars) - 1
+    def add_temp_local(self, typ, node):
+        dnode = DummyNode(typ)
+        self.func.vars.append(dnode)
+        dnode._text = ast.get_source_segment(self.src, node)
+        
+        loc_id =  len(self.func.vars) - 1
+        self.loc_id_of_decl[dnode] = loc_id
+        return loc_id
 
     def emit(self, instr):
         self.body.cmds.append(instr)
 
-    def do(self, module):
+    def do(self, module, src):
+        self.ast = module
+        self.src = src
         for stat in module.body:
             self.do_stat(stat)
         # print(self.func)
@@ -76,27 +97,25 @@ class ToIR:
         rhs = stat.value
         assert len(lhs) == 1, "Only single assignments are supported"
 
-        lhs = lhs[0]
+        lhs_decl = lhs[0]._decl
 
         # TODO: handle assignments where the RHS is not
         # an identifier
-        if lhs in self.visited_decls:
+        if lhs_decl in self.visited_decls:
             # assignment to existing variable
-            id = self.loc_id_of_decl[lhs]
+            id = self.loc_id_of_decl[lhs_decl]
             self.emit(ir.Mov(id, self.do_exp(rhs)))
         else:
             # declare new variable in the current function's
             # scope
             val = self.do_exp(rhs)
-            id = self.add_local(lhs)
-            self.loc_id_of_decl[lhs] = id
+            id = self.add_local(lhs_decl)
             self.emit(ir.Mov(id, val))
 
 
     def do_for(self, stat):
         iter_var = stat.target
         loc_id = self.add_local(iter_var)
-        self.loc_id_of_decl[iter_var] = loc_id
         # print(iter_var)
 
         iter_call = stat.iter
@@ -153,7 +172,7 @@ class ToIR:
         typ = find_op_type(node.left._type, op, node.right._type)
         assert typ, f"Could not resolve binary operator '{self.op_to_s(op)}' for '{node.left._type}' and '{node.right._type}'"
 
-        loc_id = self.add_temp_local(typ)
+        loc_id = self.add_temp_local(typ, node)
         cmd = ir.Mov(loc_id, ir.BinOp(loc_id, lhs, self.op_to_s(op), rhs))
         self.emit(cmd)
         return ir.LocalVar(loc_id)
@@ -161,11 +180,11 @@ class ToIR:
     def op_to_s(self, op):
         if op == 'Add':
             return '+'
-        if op == 'Mult':
+        elif op == 'Mult':
             return '*'
-        if op == 'Div':
+        elif op == 'Div':
             return '/'
-        if op == 'Sub':
+        elif op == 'Sub':
             return '-'
         raise Exception("Not implemented")
 
@@ -173,7 +192,10 @@ class ToIR:
         if node.id in builtins:
             return ir.Builtin(node.id)
 
-        key = node._type._decl
+        if not getattr(node, '_decl', False):
+            self.error("INTERNAL: ast not type annotated", node)
+            return
+        decl = node._decl
         # print(key, node.id)
-        loc_id = self.loc_id_of_decl[key]
+        loc_id = self.loc_id_of_decl[decl]
         return ir.LocalVar(loc_id)

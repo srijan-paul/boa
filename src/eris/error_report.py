@@ -28,3 +28,6 @@ def report(src: str, msg: str, node):
 
 def info(msg: str):
     print(colored('[INFO] ', 'blue') + msg)
+
+def success(msg: str):
+    print(colored('[DONE] ', 'green') + msg)

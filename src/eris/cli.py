@@ -3,7 +3,7 @@ import sys
 import time
 
 from driver import compile_py
-from error_report import info
+from error_report import info, success
 from termcolor import colored
 
 
@@ -46,6 +46,7 @@ file_path = None
 out_path  = None
 out_bin   = None
 boa_lib   = 'lib_boa/boa_runtime.c'
+flags     = '-O3'
 
 def on_change():
     os.system('clear')
@@ -54,21 +55,27 @@ def on_change():
     print(f"[{curr_time}] checked '{file_path}'\n")
 
     try:
+        info('Changes detected, restarting inference engine:')
         code = compile_py(src)
-        if not code:
-            return None
+        if not code: return None
         
         out_file = open(out_path, "w")
         out_file.write(code)
         out_file.close()
+       
         os.system(f'clang-format -i {out_path}')
-        info('Generate ASM')
-        os.system(f'gcc {out_path} {boa_lib} -o {out_bin}')
+        info('Generating Assembly (Syntax=ATnT):')
+       
+        os.system(f'gcc {out_path} {boa_lib} {flags} -o {out_bin}')
+        # os.system(f'rm {out_path}')
         dst_bin = colored(out_bin, 'yellow')
-        info(f'Linking successful. Output file: {dst_bin}')
+       
+        success(f'Linking successful. Output file: {dst_bin}')
+
     except SyntaxError as err:
         info('Syntax Error in source file')
         raise err
+
     except (NameError, AttributeError) as err:
         raise err
 

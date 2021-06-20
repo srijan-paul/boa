@@ -10,7 +10,7 @@ def compile_py(src, debug=False):
 	if not ok: return None
 
 	irconv = ToIR()
-	irconv.do(tree)
+	irconv.do(tree, src)
 
 	if irconv.has_error: return None
 

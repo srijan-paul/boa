@@ -27,8 +27,8 @@ class TypeGenerator(ast.NodeVisitor):
         self.src = src
         self.errmsg = False
 
-        # stores types of all identifiers
-        self.symtab = {}  # str -> Symbol
+        self.symtab       = {}  # str -> Type
+        self.decl_of_name = {}  # str -> ast.Node
 
         # Used to generate the Type variables
         self.next_var_id = 0
@@ -48,8 +48,7 @@ class TypeGenerator(ast.NodeVisitor):
     def visit_Module(self, module):
         for stat in module.body:
             self.visit(stat)
-            if self.has_error:
-                break
+            if self.has_error: break
 
         return self.symtab
 
@@ -62,11 +61,18 @@ class TypeGenerator(ast.NodeVisitor):
             self.error("Only single variable assignments are supported", stat.targets[0])
 
         name = stat.targets[0]
-        rhs = stat.value
-        typ = self.visit(rhs)
+        rhs  = stat.value
+        typ  = self.visit(rhs)
 
-        self.symtab[name.id] = typ
-        typ._decl = name
+        # Differentiate between Re-assignment and declaration 
+        if not name.id in self.decl_of_name:
+            # Register this as a declaration in the symbol table
+            self.decl_of_name[name.id] = name
+            self.symtab[name.id] = typ
+            typ._decl = name
+
+        # TODO: check type consistency for re-assignments
+        name._decl = self.decl_of_name[name.id]
         name._type = typ
 
 
@@ -75,6 +81,7 @@ class TypeGenerator(ast.NodeVisitor):
             self.visit(stat)
             if self.has_error: return
 
+    # Infer types from blocks containing `return` statements
     def visit_For(self, stat: ast.For):
         iter_var = stat.target
         assert isinstance(iter_var, ast.Name), "Only variable iterators are supported"
@@ -107,18 +114,21 @@ class TypeGenerator(ast.NodeVisitor):
 
         if not op in ['Add', 'Mult', 'Sub', 'Div']:
             self.error(f"Operator '{op}' not supported", node)
+        
         self.assign_typvar(node)
         return node._type
 
     def visit_Name(self, node: ast.Name):
-        id = node.id
-        if id in self.symtab:
-            node._type = self.symtab[id]
+        iden = node.id
+        if iden in self.symtab:
+            node._type = self.symtab[iden]
+            node._decl = self.decl_of_name[iden]
             return node._type
 
-        if id in builtins:
-            node._type = builtins[id].typ
-            return builtins[id].typ
+        if iden in builtins:
+            node._type = builtins[iden].typ
+            node._decl = None
+            return builtins[iden].typ
         
         self.error(f"Unknown variable '{id}'", node)
 

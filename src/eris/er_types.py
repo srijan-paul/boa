@@ -18,6 +18,7 @@ class TypeInt(Type):
     def __init__(self):
         super().__init__('int', True)
 
+
 class TypeNum(Type):
     def __init__(self):
         super().__init__('num', True)

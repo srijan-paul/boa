@@ -63,7 +63,7 @@ class Coder:
         return method(ir)
 
     def emit_decls(self, vars):
-        return '\n'.join([f'{self.c_typ(vars[i]._type)} {cvar(i)};' for i in range(0, len(vars))])
+        return '\n'.join([f'{self.c_typ(vars[i]._type)} {cvar(i)}; /* {vars[i]._text} */' for i in range(0, len(vars))])
 
 
     def emit_Seq(self, ir):
