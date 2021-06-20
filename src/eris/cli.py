@@ -45,7 +45,6 @@ class Watcher(object):
 file_path = None
 out_path  = None
 out_bin   = None
-boa_lib   = 'lib_boa/boa_runtime.c'
 flags     = '-O3'
 
 def on_change():
@@ -66,7 +65,7 @@ def on_change():
         os.system(f'clang-format -i {out_path}')
         info('Generating Assembly (Syntax=ATnT):')
        
-        os.system(f'gcc {out_path} {boa_lib} {flags} -o {out_bin}')
+        os.system(f'gcc {out_path} {flags} -o {out_bin}')
         # os.system(f'rm {out_path}')
         dst_bin = colored(out_bin, 'yellow')
        
