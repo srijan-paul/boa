@@ -12,7 +12,8 @@ class Type:
     def __repr__(self):
         return self.tag
 
-
+# Only used for specifying the type of
+# the exit code
 class TypeInt(Type):
     def __init__(self):
         super().__init__('int', True)
@@ -110,3 +111,9 @@ class Symbol:
 class TypeClass:
     def __init__(self):
         pass
+
+
+def types_equal(lhs, rhs):
+    if lhs.tag == rhs.tag:
+        return True
+    return False

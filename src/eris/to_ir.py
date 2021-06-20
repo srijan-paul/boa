@@ -139,6 +139,8 @@ class ToIR:
         val = node.value
         if type(val) == int or type(val) == float:
             return ir.Number(val)
+        elif type(val) == str:
+            return ir.String(val)
         else:
             raise Exception("Not implemented")
 
@@ -149,7 +151,7 @@ class ToIR:
 
         assert op in ir_op, f"Invalid operator '{op}'"
         typ = find_op_type(node.left._type, op, node.right._type)
-        assert typ
+        assert typ, f"Could not resolve binary operator '{self.op_to_s(op)}' for '{node.left._type}' and '{node.right._type}'"
 
         loc_id = self.add_temp_local(typ)
         cmd = ir.Mov(loc_id, ir.BinOp(loc_id, lhs, self.op_to_s(op), rhs))

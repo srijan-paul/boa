@@ -4,9 +4,9 @@ from to_c import Coder
 from ast import parse
 
 
-def compile_py(src):
+def compile_py(src, debug=False):
 	tree = parse(src)
-	ok = infer_types(tree, src)
+	ok = infer_types(tree, src, debug)
 	if not ok: return None
 
 	irconv = ToIR()

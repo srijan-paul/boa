@@ -3,6 +3,8 @@ import sys
 import time
 
 from driver import compile_py
+from error_report import info
+from termcolor import colored
 
 
 class Watcher(object):
@@ -60,11 +62,13 @@ def on_change():
         out_file.write(code)
         out_file.close()
         os.system(f'clang-format -i {out_path}')
-        print('formatted')
+        info('Generate ASM')
         os.system(f'gcc {out_path} {boa_lib} -o {out_bin}')
-        print('compiled')
-    except SyntaxError as s:
-        print('Syntax error')
+        dst_bin = colored(out_bin, 'yellow')
+        info(f'Linking successful. Output file: {dst_bin}')
+    except SyntaxError as err:
+        info('Syntax Error in source file')
+        raise err
     except (NameError, AttributeError) as err:
         raise err
 

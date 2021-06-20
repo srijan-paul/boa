@@ -1,5 +1,5 @@
 import ast
-from er_types import Type, TypeBool, TypeNum, TypeStr, types_consistent, Symbol, TypeInfo, TypeVar
+from er_types import *
 import debug
 from error_report import report
 from builtins_ import builtins
@@ -112,7 +112,6 @@ class TypeGenerator(ast.NodeVisitor):
 
     def visit_Name(self, node: ast.Name):
         id = node.id
-        print(id)
         if id in self.symtab:
             node._type = self.symtab[id]
             return node._type
@@ -250,33 +249,41 @@ class EqGenerator(ast.NodeVisitor):
         print(f'Eq generation: skipping: {classname(node)}')
 
 
+
+## TODO: get rid of this dirty global variable by moving it to local state.
+g_src = None
+
 def unify_var(typvar: Type, typ: Type, typmap: dict):
     assert isinstance(typvar, TypeVar)
     if typvar.tag in typmap:
         return unify(typmap[typvar], typ, typmap)
 
     typmap[typvar.tag] = typ
-    return typmap
+    return typmap, True
 
 
-def unify(l_type: Type, r_type: Type, typmap: dict):
+def unify(l_type: Type, r_type: Type, typmap: dict, node):
     if typmap is None:
-        return None
+        return typmap, False
 
-    if l_type == r_type:
-        return typmap
+    if types_equal(l_type, r_type):
+        return typmap, True
 
     if isinstance(l_type, TypeVar):
         return unify_var(l_type, r_type, typmap)
     elif isinstance(r_type, TypeVar):
         return unify_var(r_type, l_type, typmap)
+    else:
+        report(g_src, f"Could not unify type '{r_type}' with '{l_type}'", node)
+        return typmap, False
 
 
 def solve_eqs(eqs):
     typsub = {}
     for eq in eqs:
-        unify(eq.lhs, eq.rhs, typsub)
-    return typsub
+        typsub, ok = unify(eq.lhs, eq.rhs, typsub, eq.node)
+        if not ok: return typsub, False
+    return typsub, True
 
 
 def substitute_types(module, typsub, src):
@@ -291,11 +298,12 @@ def substitute_types(module, typsub, src):
 
 
 def infer_types(ast, src, log=False):
+    global g_src
+    g_src = src
     # 1. Assign type variables
     typgen = TypeGenerator(src)
     typgen.visit(ast)
-    if typgen.has_error:
-        return False
+    if typgen.has_error: return False
     if log: debug.dump_vars(src, ast)
 
     # 2. Generate Type Equations
@@ -303,7 +311,9 @@ def infer_types(ast, src, log=False):
     if log: debug.dump_eqs(src, eqs)
 
     # 3. Use unification to derive the types [TODO]
-    typsub = solve_eqs(eqs)
+    typsub, ok = solve_eqs(eqs)
+    if not ok: return False
+
     if log:
         print('\n--- Substitutions ---\n')
         for k in typsub.keys():

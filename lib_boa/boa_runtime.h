@@ -9,14 +9,15 @@ typedef float boaNumber;
 typedef enum {
     V_NUM,
     V_STR,
-    V_BOOL
+    V_BOOL,
+    V_OBJ
 } BVKind;
 
 typedef struct {
     BVKind tag;
     union {
         boaNumber numVal;
-        const char* strVal;
+        void* objVal;
         bool boolVal;
     } as;
 } BoaValue;
@@ -31,7 +32,6 @@ BoaValue bNumber(boaNumber value) {
     v.tag = V_NUM;
     return v;
 }
-
 
 void boa_print(BoaValue v) {
     printf("%f\n", v.as.numVal);

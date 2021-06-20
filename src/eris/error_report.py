@@ -25,3 +25,6 @@ def report(src: str, msg: str, node):
     print(colored(line_no_str, 'red', 'on_grey', ['dark'])  + line)
     print(padding + squiggle)
     print(colored('[Error] ', 'red', 'on_grey', ['bold']) + msg)
+
+def info(msg: str):
+    print(colored('[INFO] ', 'blue') + msg)

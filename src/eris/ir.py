@@ -86,6 +86,15 @@ class Number(Value):
 
     __repr__ = __str__
 
+class String(Value):
+    def __init__(self, value: str):
+        self.value = value
+
+    def __str__(self):
+        return self.value
+
+    __repr__ = __str__
+
 
 class Cmd:
     pass
