@@ -5,12 +5,14 @@
 - [x] `ConstantType`s
 - [x] File watching
 - [x] Update symbols in symbol table
-- [ ] More binary operators
+- [x] More binary operators
+- [ ] `==` and `!=` operators, and relveant tests
 - [ ] `if` statements
-- [ ] `while` statements
+- [x] `while` statements
 - [x] `range`
 - [ ] Function declaration
 - [ ] Function call
+- [ ] Polymorhphic function types and instantiation
 - [ ] Type traits
 - [ ] Builtins:
 	- [ ] `print`
