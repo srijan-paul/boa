@@ -3,6 +3,7 @@ import unittest
 from er_types import Type
 from inference import infer_types
 from textwrap import dedent
+from driver import compile_py
 import ast
 
 
@@ -14,7 +15,18 @@ class Assertions:
         ok, err = infer_types(tree, src)
 
         if ok or err != expected_err:
-          raise AssertionError(msg + f"\nExpected: '{expected_err}'\nGot: '{err}'")
+            raise AssertionError(msg + f"\nExpected: '{expected_err}'\nGot: '{err}'")
+
+    def assertSuccess(self, src: str, msg: str):
+        """Asserts that a program compiles down to IR and codegens successfully"""
+        try:
+            res = compile_py(src)
+            if not res:
+                raise AssertionError(msg + "\nFailed to compile test case")
+        except AssertionError as err:
+            raise err
+        except Exception as ex:
+            raise AssertionError(f"{msg}\nInternal Compiler Error while compiling source.\n{ex}")
 
 
 class InferTest(unittest.TestCase, Assertions):
@@ -26,6 +38,15 @@ class InferTest(unittest.TestCase, Assertions):
             y = 'x'
             z = x + y
             """), "Could not unify type 'num' with 'str'", "Integer and String addition raises expected error")
+
+    def test_if(self):
+        self.assertSuccess(dedent("""
+        a = 1
+        b = 2
+        c = 0
+        if a < 100:
+            c = a + b
+        """), "If statements with no else blocks compile successfully")
 
 
 if __name__ == '__main__':

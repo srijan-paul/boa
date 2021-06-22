@@ -5,8 +5,8 @@ from ast import parse
 
 def compile_py(src, debug=False, stop_after='coder'):
     tree = parse(src)
-    ok = infer_types(tree, src, debug)
-    if not ok: return None
+    ok, err = infer_types(tree, src, debug)
+    if not ok or err: return None
     if stop_after == 'infer':
         return tree
 
