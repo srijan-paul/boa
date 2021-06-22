@@ -1,7 +1,7 @@
 import ir
 import re
 from textwrap import dedent
-from er_types import *
+from er_types import TypeNum, TypeBool, TypeStr, TypeInt, TypeFunc
 from builtins_ import builtins
 
 
@@ -58,7 +58,7 @@ class Coder:
         method = getattr(self, method_name, None)
         if not method:
             print(f'Skipping IR: {tag}')
-            return '{{ ERROR: NO DISPATCH }}'
+            return f'{{ ERROR: NO DISPATCH for {tag} }}'
 
         return method(ir)
 
@@ -105,6 +105,17 @@ class Coder:
             'step': self.emit(step),
             'body': self.emit(stat.body)
         })
+
+    def emit_If(self, stat):
+        exp  = self.emit(stat.cond)
+        body = self.emit(stat.then)
+        return dedent(f"""
+            if ({exp}) {{
+                {body}
+            }}        
+        """) 
+
+        
 
 
     def emit_Call(self, call):

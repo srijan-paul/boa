@@ -4,6 +4,7 @@ from er_types import Type, TypeBool, TypeNum, TypeStr, types_consistent, Symbol,
 from builtins_ import builtins
 from error_report import report
 
+
 def classname(obj):
     return obj.__class__.__name__
 
@@ -12,7 +13,11 @@ ir_op = {
     'Add': [['num', 'num', TypeNum], ['str', 'str', TypeStr]],
     'Div': [['num', 'num', TypeNum]],
     'Mult': [['num', 'num', TypeNum], ['str', 'num', TypeStr]],
-    'Sub': [['num', 'num', TypeNum]]
+    'Sub': [['num', 'num', TypeNum]],
+    'Lt': [['num', 'num', TypeNum]],
+    'LtE': [['num', 'num', TypeNum]],
+    'GtE': [['num', 'num', TypeNum]],
+    'Gt': [['num', 'num', TypeNum]]
 }
 
 
@@ -26,8 +31,10 @@ def find_op_type(lhs, op, rhs):
 
     return None
 
+
 class Dummy:
     pass
+
 
 class DummyNode:
     def __init__(self, typ):
@@ -39,9 +46,9 @@ class ToIR:
     def __init__(self):
         self.loc_id_of_decl = {}  # int -> ast.Name
         self.visited_decls = set()  # { ast.Name }
-        self.module  = ir.Module('main')
-        self.func    = self.module.funcs[0]
-        self.body    = self.func.body
+        self.module = ir.Module('main')
+        self.func = self.module.funcs[0]
+        self.body = self.func.body
         self.has_error = False
 
     def error(self, msg, node):
@@ -56,9 +63,9 @@ class ToIR:
         used to refer to this local"""
         self.visited_decls.add(decl)
         self.func.vars.append(decl)
-        
-        loc_id =  len(self.func.vars) - 1
-        
+
+        loc_id = len(self.func.vars) - 1
+
         self.loc_id_of_decl[decl] = loc_id
         # used for debug comment generation
         decl._text = ast.get_source_segment(self.src, decl)
@@ -68,8 +75,8 @@ class ToIR:
         dnode = DummyNode(typ)
         self.func.vars.append(dnode)
         dnode._text = ast.get_source_segment(self.src, node)
-        
-        loc_id =  len(self.func.vars) - 1
+
+        loc_id = len(self.func.vars) - 1
         self.loc_id_of_decl[dnode] = loc_id
         return loc_id
 
@@ -97,6 +104,7 @@ class ToIR:
         rhs = stat.value
         assert len(lhs) == 1, "Only single assignments are supported"
 
+        assert '_decl' in lhs[0].__dict__, ast.get_source_segment(self.src, lhs[0]) + f" <- has no decl [line {lhs[0].lineno}] "
         lhs_decl = lhs[0]._decl
 
         # TODO: handle assignments where the RHS is not
@@ -112,6 +120,18 @@ class ToIR:
             id = self.add_local(lhs_decl)
             self.emit(ir.Mov(id, val))
 
+    def compile_block(self, stats: list) -> ir.Seq:
+        """Compiles a list of statements into ir.Seq"""
+
+        body = ir.Seq()
+        prev_body = self.body
+
+        self.body = body
+        for stat in stats:
+            self.do_stat(stat)
+
+        self.body = prev_body
+        return body
 
     def do_for(self, stat):
         iter_var = stat.target
@@ -119,20 +139,18 @@ class ToIR:
         # print(iter_var)
 
         iter_call = stat.iter
-        
+
         from_ = self.do_exp(iter_call.args[0])
-        to    = self.do_exp(iter_call.args[1])
-        step  = self.do_exp(iter_call.args[2]) if len(iter_call.args) == 3 else None
+        to = self.do_exp(iter_call.args[1])
+        step = self.do_exp(iter_call.args[2]) if len(iter_call.args) == 3 else None
 
-        body      = ir.Seq()
-        prev_body = self.body
-        self.body = body
-        for stat in stat.body:
-            self.do_stat(stat)
-
-        self.body = prev_body
+        body = self.compile_block(stat.body)
         self.emit(ir.For(ir.LocalVar(loc_id), from_, to, step, body))
 
+    def do_if(self, stat):
+        cond_exp = self.do_exp(stat.test)
+        body = self.compile_block(stat.body)
+        self.emit(ir.If(cond_exp, body))
 
     def do_annassign():
         pass
@@ -151,7 +169,7 @@ class ToIR:
 
     def do_call(self, call_exp):
         func = self.do_exp(call_exp.func)
-        args = [ self.do_exp(arg) for arg in call_exp.args ] 
+        args = [self.do_exp(arg) for arg in call_exp.args]
         return ir.Call(func, args)
 
     def do_constant(self, node):
@@ -177,15 +195,36 @@ class ToIR:
         self.emit(cmd)
         return ir.LocalVar(loc_id)
 
+    def do_compare(self, node: ast.If):
+        lhs = node.left
+        rhs = node.comparators[0]
+        op = classname(node.ops[0])
+
+        assert op in ir_op, f"Invalid operator '{op}'"
+        typ = find_op_type(lhs._type, op, rhs._type)
+        assert typ, f"Could not resolve binary operator '{self.op_to_s(op)}' for '{lhs._type}' and '{rhs._type}'"
+
+        loc_id = self.add_temp_local(typ, node)
+        left  = self.do_exp(lhs)
+        right = self.do_exp(rhs)
+        cmd = ir.Mov(loc_id, ir.BinOp(loc_id, left, self.op_to_s(op), right))
+        self.emit(cmd)
+        return ir.LocalVar(loc_id)
+
     def op_to_s(self, op):
-        if op == 'Add':
-            return '+'
-        elif op == 'Mult':
-            return '*'
-        elif op == 'Div':
-            return '/'
-        elif op == 'Sub':
-            return '-'
+        op_map = {
+            'Add': '+',
+            'Mult': '*',
+            'Div': '/',
+            'Sub': '-',
+            'Lt': '<',
+            'Gt': '>',
+            'LtE': '<=',
+            'GtE': '>=',
+        }
+        if op in op_map:
+            return op_map[op]
+
         raise Exception("Not implemented")
 
     def do_name(self, node):

@@ -120,6 +120,28 @@ class TypeGenerator(ast.NodeVisitor):
         self.assign_typvar(node)
         return node._type
 
+
+    def visit_If(self, node: ast.If):
+        self.visit(node.test)
+        self.visit_stats(node.body)
+
+    def visit_Compare(self, node: ast.Compare):
+        """As of this current prototype, Boa only supports comparisons that aren't chained.
+        So `1 < 2 < 3` is not valid. But `1 < 2 and 2 < 3` is valid."""
+        left = node.left
+        right = node.comparators[0]
+        op = node.ops[0]
+
+        if len(node.ops) != 1:
+            self.error("Chained comparisons are not support yet in Boa.", node.ops[0])
+            return
+
+        self.visit(left)
+        self.visit(right)
+
+        # Comparison always returns boolean
+        node._type = TypeBool()
+
     def visit_Name(self, node: ast.Name):
         iden = node.id
         if iden in self.symtab:
@@ -132,7 +154,7 @@ class TypeGenerator(ast.NodeVisitor):
             node._decl = None
             return builtins[iden].typ
 
-        self.error(f"Unknown variable '{id}'", node)
+        self.error(f"Unknown variable '{iden}'", node)
 
     def visit_Expr(self, node):
         self.visit(node.value)
@@ -178,6 +200,9 @@ class Equation:
 
 
 class EqGenerator(ast.NodeVisitor):
+    """The Equation Generator walks over an AST that has been annotated with type variables
+    and then it generates a list of type equations assosciated with nodes wherever possible"""
+
     def __init__(self, ast):
         self.eqs = []
         self.ast = ast
@@ -210,6 +235,7 @@ class EqGenerator(ast.NodeVisitor):
 
     def visit_Call(self, call_exp):
         self.visit(call_exp.func)
+        if self.has_error: return
         for arg in call_exp.args:
             self.visit(arg)
 
@@ -233,8 +259,32 @@ class EqGenerator(ast.NodeVisitor):
 
         self.visit_stats(stat.body)
 
-    # TODO: add type traits
+    def visit_If(self, node: ast.If):
+        self.visit(node.test)
+        self.visit_stats(node.body)
 
+
+    def visit_Compare(self, node):
+        left = node.left
+        right = node.comparators[0]
+
+        assert(len(node.ops) == 1)
+        
+        self.visit(left)
+        self.visit(right)
+
+        # Comparison operators can only be used between two values of same types
+        # and the resulting type is *always* a boolean 
+        if classname(node.ops[0]) in ['Gt', 'Lt', 'GtE', 'LtE']:
+            self.eqs.append(Equation(left._type, TypeNum(), left))
+            self.eqs.append(Equation(right._type, TypeNum(), right))
+        else:
+            # $type_left == $type_right
+            self.eqs.append(Equation(left._type, right._type, node))
+
+        self.eqs.append(Equation(node._type, TypeBool(), node))
+
+    # TODO: add type traits to Binary operators
     def visit_BinOp(self, node):
         """
         Generate type equations from binary operator application nodes.
@@ -265,12 +315,16 @@ class EqGenerator(ast.NodeVisitor):
 # TODO: get rid of this dirty global variable by moving it to local state.
 g_src = None
 g_unify_error = None
+
+
 def unification_error(err: str, node):
     global g_unify_error, g_src
 
-    if g_unify_error: return
-    g_unify_error = err 
+    if g_unify_error:
+        return
+    g_unify_error = err
     report(g_src, err, node)
+
 
 def unify_var(typvar: Type, typ: Type, typmap: dict):
     assert isinstance(typvar, TypeVar)
@@ -336,7 +390,7 @@ def infer_types(ast, src, log=False):
     # 3. Use unification to derive the types [TODO]
     typsub, ok = solve_eqs(eqs)
     if not ok:
-        return False, g_unify_error 
+        return False, g_unify_error
 
     if log:
         print('\n--- Substitutions ---\n')

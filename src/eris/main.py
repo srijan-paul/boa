@@ -2,11 +2,12 @@ import ast
 import driver
 
 src = """
-a = 1 
+a = 1
 b = 2
-c = a + b
-print(c)
+c = 0
+if a < b:
+	c = a
 """
 
-# print(ast.dump(ast.parse(src)))
+print(ast.dump(ast.parse(src)))
 print(driver.compile_py(src, True))

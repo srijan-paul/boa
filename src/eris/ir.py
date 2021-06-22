@@ -135,3 +135,11 @@ class For:
         return f'for i = {self.from_}, {self.to}, {self.step}:\n{str(self.body)}'
 
     __repr__ = __str__
+
+class If:
+    def __init__(self, cond_exp, then: Seq):
+        self.cond = cond_exp
+        self.then = then 
+
+    def __str__(self):
+        return f'IF [{self.cond}] -> {{\n {self.then} \n}}'
