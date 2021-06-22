@@ -147,6 +147,11 @@ class ToIR:
         body = self.compile_block(stat.body)
         self.emit(ir.For(ir.LocalVar(loc_id), from_, to, step, body))
 
+    def do_while(self, stat):
+        cond_exp = self.do_exp(stat.test)
+        body     = self.compile_block(stat.body)
+        self.emit(ir.While(cond_exp, body))
+
     def do_if(self, stat):
         cond_exp = self.do_exp(stat.test)
         body = self.compile_block(stat.body)
@@ -178,6 +183,8 @@ class ToIR:
             return ir.Number(val)
         elif type(val) == str:
             return ir.String(val)
+        elif type(val) == bool:
+            return ir.Bool(val)
         else:
             raise Exception("Not implemented")
 
@@ -222,6 +229,7 @@ class ToIR:
             'LtE': '<=',
             'GtE': '>=',
         }
+    
         if op in op_map:
             return op_map[op]
 

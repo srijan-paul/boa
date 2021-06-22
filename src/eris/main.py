@@ -1,13 +1,12 @@
 import ast
 import driver
+import inference
 
 src = """
-a = 1
-b = 2
-c = 0
-if a < b:
-	c = a
+x = 1
+y = 'x'
+z = x + y
 """
 
-print(ast.dump(ast.parse(src)))
-print(driver.compile_py(src, True))
+tree = ast.parse(src)
+inference.infer_types(tree, src)

@@ -50,7 +50,7 @@ class Coder:
 
     def gen_c(self, module):
         # main
-        return  '#include <stdio.h>\n#include <stdlib.h>\n#include "../lib_boa/boa_runtime.h"\n' + self.emit(module.funcs[0])
+        return '#include <stdio.h>\n#include <stdlib.h>\n#include "../lib_boa/boa_runtime.h"\n' + self.emit(module.funcs[0])
 
     def emit(self, ir):
         tag = ir.__class__.__name__
@@ -65,7 +65,6 @@ class Coder:
     def emit_decls(self, vars):
         return '\n'.join([f'{self.c_typ(vars[i]._type)} {cvar(i)}; /* {vars[i]._text} */' for i in range(0, len(vars))])
 
-
     def emit_Seq(self, ir):
         return ';\n'.join([self.visit(cmd) for cmd in ir.cmds]) + ';\n'
 
@@ -74,7 +73,8 @@ class Coder:
 
     def c_to_dyn(self, v, typ):
         v = self.emit(v)
-        if isinstance(typ, TypeNum): return f'bNumber({v})'
+        if isinstance(typ, TypeNum):
+            return f'bNumber({v})'
         raise Exception("Not implemented")
 
     def emit_Func(self, func):
@@ -91,7 +91,6 @@ class Coder:
             'opt_ret': 'return 0;' if func.name == 'main' else '',
         })
 
-
     def emit_For(self, stat):
         from_, to, step = stat.from_, stat.to, stat.step
         return render(dedent("""
@@ -106,17 +105,24 @@ class Coder:
             'body': self.emit(stat.body)
         })
 
+    def emit_While(self, stat):
+        exp = self.emit(stat.cond)
+        body = self.emit(stat.body)
+
+        return dedent(f"""
+            while ({exp}) {{
+                {body}
+            }}
+        """)
+
     def emit_If(self, stat):
-        exp  = self.emit(stat.cond)
+        exp = self.emit(stat.cond)
         body = self.emit(stat.then)
         return dedent(f"""
             if ({exp}) {{
                 {body}
             }}        
-        """) 
-
-        
-
+        """)
 
     def emit_Call(self, call):
         func = call.func
@@ -129,21 +135,22 @@ class Coder:
                 typ = builtin.typ.arg_types[i]
             c_args = ', '.join([self.c_to_dyn(arg, typ) for arg in call.args])
             return f'{builtin.cname}({c_args})'
-            
 
         raise Exception("Not implemented calls")
-
 
     def emit_Seq(self, seq):
         return render('$cmds', {
             'cmds': '\n'.join([self.emit(cmd) for cmd in seq.cmds])
         })
-    
+
     def emit_LocalVar(self, var):
         return cvar(var.id)
 
     def emit_Number(self, num):
         return str(num.value)
+    
+    def emit_Bool(self, val):
+        return 'true' if val.value else 'false'
 
     def emit_BinOp(self, cmd):
         return f'{self.emit(cmd.left)} {cmd.op} {self.emit(cmd.right)}'
@@ -152,4 +159,4 @@ class Coder:
         return render('$dst = $src;', {
             'dst': cvar(mov.dst),
             'src': self.emit(mov.src)
-        });
+        })

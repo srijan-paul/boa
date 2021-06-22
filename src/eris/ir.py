@@ -1,4 +1,5 @@
-from er_types import TypeFunc, TypeInt, TypeNum 
+from er_types import TypeFunc, TypeInt, TypeNum
+
 
 class Seq:
     def __init__(self):
@@ -13,6 +14,7 @@ class Stat:
         return str(self.cmd)
 
     __repr__ = __str__
+
 
 class Func:
     def __init__(self, name, typ):
@@ -38,9 +40,10 @@ class Call:
 
     __repr__ = __str__
 
+
 class Module:
     def __init__(self, name: str):
-        self.name  = name
+        self.name = name
         self.funcs = []
 
         # top level function for toplevel code that
@@ -86,6 +89,7 @@ class Number(Value):
 
     __repr__ = __str__
 
+
 class String(Value):
     def __init__(self, value: str):
         self.value = value
@@ -93,6 +97,16 @@ class String(Value):
     def __str__(self):
         return self.value
 
+    __repr__ = __str__
+
+
+class Bool(Value):
+    def __init__(self, value: bool):
+        self.value = value
+
+    def __str__(self):
+        return str(self.value)
+    
     __repr__ = __str__
 
 
@@ -120,8 +134,9 @@ class BinOp(Cmd):
 
     def __str__(self):
         return f'x{self.dst} ← {self.left} {self.op} {self.right}'
-      
+
     __repr__ = __str__
+
 
 class For:
     def __init__(self, var, from_, to, step, body):
@@ -136,10 +151,24 @@ class For:
 
     __repr__ = __str__
 
+
+class While:
+    def __init__(self, cond, body):
+        self.cond = cond
+        self.body = body
+
+    def __str__(self):
+        return f'WHILE ({self.cond}) DO\n{self.body}\nEND'
+
+    __repr__ = __str__
+
+
 class If:
     def __init__(self, cond_exp, then: Seq):
         self.cond = cond_exp
-        self.then = then 
+        self.then = then
 
     def __str__(self):
         return f'IF [{self.cond}] -> {{\n {self.then} \n}}'
+
+    __repr__ = __str__

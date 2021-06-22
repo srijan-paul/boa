@@ -1,6 +1,5 @@
 from logging import debug
 import unittest
-from er_types import Type
 from inference import infer_types
 from textwrap import dedent
 from driver import compile_py
@@ -13,7 +12,6 @@ class Assertions:
         [err] is thrown."""
         tree = ast.parse(src)
         ok, err = infer_types(tree, src)
-
         if ok or err != expected_err:
             raise AssertionError(msg + f"\nExpected: '{expected_err}'\nGot: '{err}'")
 
@@ -47,6 +45,12 @@ class InferTest(unittest.TestCase, Assertions):
         if a < 100:
             c = a + b
         """), "If statements with no else blocks compile successfully")
+
+        self.assertInferenceError(dedent("""
+        x = 1
+        if x:
+            x = 10
+        """), "Could not unify type 'bool' with 'num'", "Error when if statement condition is not a boolean")
 
 
 if __name__ == '__main__':

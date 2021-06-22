@@ -120,9 +120,14 @@ class TypeGenerator(ast.NodeVisitor):
         self.assign_typvar(node)
         return node._type
 
-
     def visit_If(self, node: ast.If):
         self.visit(node.test)
+        self.visit_stats(node.body)
+
+    def visit_While(self, node: ast.While):
+        self.visit(node.test)
+        if self.has_error:
+            return
         self.visit_stats(node.body)
 
     def visit_Compare(self, node: ast.Compare):
@@ -175,7 +180,7 @@ class TypeGenerator(ast.NodeVisitor):
             node._type = TypeStr()
         elif type(val) == int or type(val) == float:
             node._type = TypeNum()
-        elif Type(val) == bool:
+        elif type(val) == bool:
             node._type = TypeBool()
         else:
             self.error("Literal not supported", node)
@@ -235,7 +240,8 @@ class EqGenerator(ast.NodeVisitor):
 
     def visit_Call(self, call_exp):
         self.visit(call_exp.func)
-        if self.has_error: return
+        if self.has_error:
+            return
         for arg in call_exp.args:
             self.visit(arg)
 
@@ -257,24 +263,29 @@ class EqGenerator(ast.NodeVisitor):
         if len(iter_call.args) == 3:
             self.visit(iter_call.args[2])
 
-        self.visit_stats(stat.body)
+        return self.visit_stats(stat.body)
 
     def visit_If(self, node: ast.If):
         self.visit(node.test)
-        self.visit_stats(node.body)
+        self.eqs.append(Equation(node.test._type, TypeBool(), node.test))
+        return self.visit_stats(node.body)
 
+    def visit_While(self, node: ast.While):
+        self.visit(node.test)
+        self.eqs.append(Equation(node.test._type, TypeBool(), node.test))
+        return self.visit_stats(node.body)
 
     def visit_Compare(self, node):
         left = node.left
         right = node.comparators[0]
 
         assert(len(node.ops) == 1)
-        
+
         self.visit(left)
         self.visit(right)
 
         # Comparison operators can only be used between two values of same types
-        # and the resulting type is *always* a boolean 
+        # and the resulting type is *always* a boolean
         if classname(node.ops[0]) in ['Gt', 'Lt', 'GtE', 'LtE']:
             self.eqs.append(Equation(left._type, TypeNum(), left))
             self.eqs.append(Equation(right._type, TypeNum(), right))
@@ -372,7 +383,7 @@ def substitute_types(module, typsub, src):
 
 
 def infer_types(ast, src, log=False):
-    global g_src, g_unify_error, g_print_err
+    global g_src, g_unify_error
     g_src = src
     # 1. Assign type variables
     typgen = TypeGenerator(src)
@@ -390,7 +401,9 @@ def infer_types(ast, src, log=False):
     # 3. Use unification to derive the types [TODO]
     typsub, ok = solve_eqs(eqs)
     if not ok:
-        return False, g_unify_error
+        err = g_unify_error
+        g_unify_error = False 
+        return False, err 
 
     if log:
         print('\n--- Substitutions ---\n')
