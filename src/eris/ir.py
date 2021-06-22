@@ -1,4 +1,4 @@
-from er_types import *
+from er_types import TypeFunc, TypeInt, TypeNum 
 
 class Seq:
     def __init__(self):
@@ -47,7 +47,7 @@ class Module:
         # goes in main
         self.funcs.append(Func('main', TypeFunc([], TypeInt())))
 
-    def __str__(name):
+    def __str__(self):
         return 'Module: ' + self.name
 
     __repr__ = __str__
