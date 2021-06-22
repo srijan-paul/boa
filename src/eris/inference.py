@@ -1,5 +1,5 @@
 import ast
-from er_types import *
+from er_types import TypeVar, TypeStr, TypeInt, TypeNum, TypeBool, Type, types_equal
 import debug
 from error_report import report
 from builtins_ import builtins
@@ -27,7 +27,7 @@ class TypeGenerator(ast.NodeVisitor):
         self.src = src
         self.errmsg = False
 
-        self.symtab       = {}  # str -> Type
+        self.symtab = {}  # str -> Type
         self.decl_of_name = {}  # str -> ast.Node
 
         # Used to generate the Type variables
@@ -48,7 +48,8 @@ class TypeGenerator(ast.NodeVisitor):
     def visit_Module(self, module):
         for stat in module.body:
             self.visit(stat)
-            if self.has_error: break
+            if self.has_error:
+                break
 
         return self.symtab
 
@@ -61,10 +62,10 @@ class TypeGenerator(ast.NodeVisitor):
             self.error("Only single variable assignments are supported", stat.targets[0])
 
         name = stat.targets[0]
-        rhs  = stat.value
-        typ  = self.visit(rhs)
+        rhs = stat.value
+        typ = self.visit(rhs)
 
-        # Differentiate between Re-assignment and declaration 
+        # Differentiate between Re-assignment and declaration
         if not name.id in self.decl_of_name:
             # Register this as a declaration in the symbol table
             self.decl_of_name[name.id] = name
@@ -75,11 +76,11 @@ class TypeGenerator(ast.NodeVisitor):
         name._decl = self.decl_of_name[name.id]
         name._type = typ
 
-
     def visit_stats(self, stats):
         for stat in stats:
             self.visit(stat)
-            if self.has_error: return
+            if self.has_error:
+                return
 
     # Infer types from blocks containing `return` statements
     def visit_For(self, stat: ast.For):
@@ -101,7 +102,8 @@ class TypeGenerator(ast.NodeVisitor):
 
         self.visit(iter_call.args[0])
         self.visit(iter_call.args[1])
-        if len(iter_call.args) == 3: self.visit(iter_call.args[2])
+        if len(iter_call.args) == 3:
+            self.visit(iter_call.args[2])
 
         self.visit_stats(stat.body)
 
@@ -114,7 +116,7 @@ class TypeGenerator(ast.NodeVisitor):
 
         if not op in ['Add', 'Mult', 'Sub', 'Div']:
             self.error(f"Operator '{op}' not supported", node)
-        
+
         self.assign_typvar(node)
         return node._type
 
@@ -129,7 +131,7 @@ class TypeGenerator(ast.NodeVisitor):
             node._type = builtins[iden].typ
             node._decl = None
             return builtins[iden].typ
-        
+
         self.error(f"Unknown variable '{id}'", node)
 
     def visit_Expr(self, node):
@@ -226,7 +228,8 @@ class EqGenerator(ast.NodeVisitor):
 
         self.visit(iter_call.args[0])
         self.visit(iter_call.args[1])
-        if len(iter_call.args) == 3: self.visit(iter_call.args[2])
+        if len(iter_call.args) == 3:
+            self.visit(iter_call.args[2])
 
         self.visit_stats(stat.body)
 
@@ -259,9 +262,15 @@ class EqGenerator(ast.NodeVisitor):
         print(f'Eq generation: skipping: {classname(node)}')
 
 
-
-## TODO: get rid of this dirty global variable by moving it to local state.
+# TODO: get rid of this dirty global variable by moving it to local state.
 g_src = None
+g_unify_error = None
+def unification_error(err: str, node):
+    global g_unify_error, g_src
+
+    if g_unify_error: return
+    g_unify_error = err 
+    report(g_src, err, node)
 
 def unify_var(typvar: Type, typ: Type, typmap: dict):
     assert isinstance(typvar, TypeVar)
@@ -284,7 +293,7 @@ def unify(l_type: Type, r_type: Type, typmap: dict, node):
     elif isinstance(r_type, TypeVar):
         return unify_var(r_type, l_type, typmap)
     else:
-        report(g_src, f"Could not unify type '{r_type}' with '{l_type}'", node)
+        unification_error(f"Could not unify type '{r_type}' with '{l_type}'", node)
         return typmap, False
 
 
@@ -292,7 +301,8 @@ def solve_eqs(eqs):
     typsub = {}
     for eq in eqs:
         typsub, ok = unify(eq.lhs, eq.rhs, typsub, eq.node)
-        if not ok: return typsub, False
+        if not ok:
+            return typsub, False
     return typsub, True
 
 
@@ -308,21 +318,25 @@ def substitute_types(module, typsub, src):
 
 
 def infer_types(ast, src, log=False):
-    global g_src
+    global g_src, g_unify_error, g_print_err
     g_src = src
     # 1. Assign type variables
     typgen = TypeGenerator(src)
     typgen.visit(ast)
-    if typgen.has_error: return False
-    if log: debug.dump_vars(src, ast)
+    if typgen.has_error:
+        return False, typgen.errmsg
+    if log:
+        debug.dump_vars(src, ast)
 
     # 2. Generate Type Equations
     eqs = EqGenerator(ast).generate()
-    if log: debug.dump_eqs(src, eqs)
+    if log:
+        debug.dump_eqs(src, eqs)
 
     # 3. Use unification to derive the types [TODO]
     typsub, ok = solve_eqs(eqs)
-    if not ok: return False
+    if not ok:
+        return False, g_unify_error 
 
     if log:
         print('\n--- Substitutions ---\n')
@@ -330,7 +344,7 @@ def infer_types(ast, src, log=False):
             print('$'+k[1:], '→', typsub[k])
 
     substitute_types(ast, typsub, src)
-    return True
+    return True, None
 
 
 if __name__ == '__main__':
