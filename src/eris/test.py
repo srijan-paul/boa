@@ -51,7 +51,26 @@ class InferTest(unittest.TestCase, Assertions):
         if x:
             x = 10
         """), "Could not unify type 'bool' with 'num'", "Error when if statement condition is not a boolean")
+        
+        
+        def test_assign(self):
 
+            self.assertInferenceError(dedent( """
+        
+            a, b = 1, 2
+        
+            """), "Only single assignments are supported", "Expect error on multiple assignments")
+    
+            def test_assign_if(self):
 
+                self.assertSuccess(dedent("""
+                a=1
+                b=2
+                """),"Only single assignments are supported")
+
+            self.assertInferenceError(dedent( """
+                a, b = 1, 2
+                """), "Only single assignments are supported", "Expect error on multiple assignments")
+            
 if __name__ == '__main__':
     unittest.main()
