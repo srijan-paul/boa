@@ -51,35 +51,30 @@ class InferTest(unittest.TestCase, Assertions):
         if x:
             x = 10 
         """), "Could not unify type 'bool' with 'num'", "Error when if statement condition is not a boolean")
-        
-        
+
     def test_assign(self):
 
         self.assertSuccess(dedent("""
         a=1
         b=2
         c="3"
-        """),"Single assignments are checked successfully")
+        """), "Single assignments are checked successfully")
 
         '''self.assertInferenceError(dedent( """
         a, b,c = 1, 2,"3"
         """), "Only single assignments are supported", "Expect error on multiple assignments")
         '''
-    
+
     def test_var(self):
         self.assertSuccess(dedent("""
         for i in range(1,5):
             pass
-            """),"only 'range' based for loops are supported right now.")
-        
-        
+            """), "only 'range' based for loops are supported right now.")
+
         self.assertInferenceError(dedent("""
         for  i in [1,2,3,4,5,6]: 
             pass
-        for i in range(1,5):
-            pass
         """),"only 'range' based for loops are supported right now.","for loops are not supported right now.")
-        
 
         #self.assertInferenceError("Repot the error")
 
