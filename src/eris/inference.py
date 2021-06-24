@@ -55,11 +55,12 @@ class TypeGenerator(ast.NodeVisitor):
 
     def visit_Assign(self, stat: ast.Assign):
         if len(stat.targets) != 1:
-            self.error("Only single single assignments are supported", stat)
+            self.error("Only single assignments are supported", stat)
             return
 
         if classname(stat.targets[0]) != 'Name':
-            self.error("Only single variable assignments are supported", stat.targets[0])
+            self.error("Only single assignments are supported", stat.targets[0])
+            return
 
         name = stat.targets[0]
         rhs = stat.value

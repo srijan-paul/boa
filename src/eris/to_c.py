@@ -45,7 +45,7 @@ class Coder:
         return render('$ret_typ $name($args)', {
             'ret_typ': self.c_typ(func.typ.ret_type),
             'name': func.name,
-            'args': 'int a, int b'
+            'args': ''
         })
 
     def gen_c(self, module):
