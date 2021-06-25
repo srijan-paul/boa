@@ -139,7 +139,7 @@ class TypeGenerator(ast.NodeVisitor):
         op = node.ops[0]
 
         if len(node.ops) != 1:
-            self.error("Chained comparisons are not support yet in Boa.", node.ops[0])
+            self.error("Chained comparisons are not supported yet.", node.ops[0])
             return
 
         self.visit(left)

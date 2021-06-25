@@ -148,8 +148,24 @@ class ToIR:
         self.emit(ir.For(ir.LocalVar(loc_id), from_, to, step, body))
 
     def do_while(self, stat):
+        body = ir.Seq()
+        prev_body = self.body
+
+        self.body = body
+        # The cond_exp must be inside while loops
+        # because of how we compile them (see codegen)
         cond_exp = self.do_exp(stat.test)
-        body     = self.compile_block(stat.body)
+        cond_loc_id = self.add_temp_local(TypeBool(), stat.test)
+
+        not_cond = ir.Not(cond_loc_id, cond_exp)
+        brk      = ir.Seq()
+        brk.cmds.append(ir.Break())
+
+        self.emit(ir.If(not_cond, brk))
+        for stat in stat.body:
+            self.do_stat(stat)
+
+        self.body = prev_body
         self.emit(ir.While(cond_exp, body))
 
     def do_if(self, stat):

@@ -1,10 +1,5 @@
-n = 10
-a = 0
-b = 1
-
-for i in range(1, n):
-    c = a + b
-    a = b
-    b = c
-
-print(c)
+x = 1
+y = 0
+while y < 10:
+    y = y + 1
+print(y)

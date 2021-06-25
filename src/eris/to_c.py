@@ -40,6 +40,10 @@ class Coder:
             return 'int'
         elif isinstance(typ, TypeNum):
             return 'float'
+        elif isinstance(typ, TypeStr):
+            return 'char*'
+        elif isinstance(typ, TypeBool):
+            return 'bool'
 
     def cfun_decl(self, func):
         return render('$ret_typ $name($args)', {
@@ -110,7 +114,7 @@ class Coder:
         body = self.emit(stat.body)
 
         return dedent(f"""
-            while ({exp}) {{
+            while (1) {{
                 {body}
             }}
         """)
@@ -148,15 +152,25 @@ class Coder:
 
     def emit_Number(self, num):
         return str(num.value)
+
+    def emit_String(self, s):
+        return f'"{s.value}"'
     
     def emit_Bool(self, val):
         return 'true' if val.value else 'false'
 
+    ## dst??
     def emit_BinOp(self, cmd):
         return f'{self.emit(cmd.left)} {cmd.op} {self.emit(cmd.right)}'
+
+    def emit_Not(self, cmd):
+        return f'!{self.emit(cmd.src)}'
 
     def emit_Mov(self, mov):
         return render('$dst = $src;', {
             'dst': cvar(mov.dst),
             'src': self.emit(mov.src)
         })
+
+    def emit_Break(self, _):
+        return 'break;'

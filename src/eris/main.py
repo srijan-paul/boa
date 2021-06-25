@@ -3,10 +3,9 @@ import driver
 import inference
 
 src = """
-x = 1
-y = 'x'
-z = x + y
+z = 'mystr'
+x = 's'
 """
 
 tree = ast.parse(src)
-inference.infer_types(tree, src)
+print(driver.compile_py(src))

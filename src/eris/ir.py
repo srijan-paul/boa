@@ -138,6 +138,17 @@ class BinOp(Cmd):
     __repr__ = __str__
 
 
+class Not(Cmd):
+    def __init__(self, dst, src):
+        self.dst = dst
+        self.src = src
+
+    def __str__(self):
+        return f'not {src}'
+
+    __repr__ = __str__
+
+
 class For:
     def __init__(self, var, from_, to, step, body):
         self.var = var
@@ -172,3 +183,14 @@ class If:
         return f'IF [{self.cond}] -> {{\n {self.then} \n}}'
 
     __repr__ = __str__
+
+
+class Break:
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return 'brk'
+
+    __repr__ = __str__
+
