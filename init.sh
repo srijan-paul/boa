@@ -1,1 +1,0 @@
-alias cls="alias boa='py' && clear"
