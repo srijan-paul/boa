@@ -43,9 +43,10 @@ class Watcher(object):
 
 
 file_path = None
-out_path  = None
-out_bin   = None
-flags     = '-O3'
+out_path = None
+out_bin = None
+flags = '-O3'
+
 
 def on_change():
     os.system('clear')
@@ -55,20 +56,16 @@ def on_change():
 
     try:
         info('Changes detected, restarting inference engine:')
-        code = compile_py(src)
-        if not code: return None
-        
-        out_file = open(out_path, "w")
-        out_file.write(code)
-        out_file.close()
-       
-        os.system(f'clang-format -i {out_path}')
+        checked_tree = compile_py(src, False, 'infer')
+        if not checked_tree:
+            return None
+
+        time.sleep(0.7)
         info('Generating Assembly (Syntax=ATnT):')
-       
-        os.system(f'gcc {out_path} {flags} -o {out_bin}')
+
+        time.sleep(0.7)
         # os.system(f'rm {out_path}')
         dst_bin = colored(out_bin, 'yellow')
-       
         success(f'Linking successful. Output file: {dst_bin}')
 
     except SyntaxError as err:

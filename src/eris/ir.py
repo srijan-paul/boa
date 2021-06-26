@@ -106,7 +106,7 @@ class Bool(Value):
 
     def __str__(self):
         return str(self.value)
-    
+
     __repr__ = __str__
 
 
@@ -144,7 +144,7 @@ class Not(Cmd):
         self.src = src
 
     def __str__(self):
-        return f'not {src}'
+        return f'not {self.src}'
 
     __repr__ = __str__
 
@@ -163,13 +163,12 @@ class For:
     __repr__ = __str__
 
 
-class While:
-    def __init__(self, cond, body):
-        self.cond = cond
+class Loop:
+    def __init__(self, body):
         self.body = body
 
     def __str__(self):
-        return f'WHILE ({self.cond}) DO\n{self.body}\nEND'
+        return f'LOOP\n{self.body}\nEND'
 
     __repr__ = __str__
 
@@ -193,4 +192,3 @@ class Break:
         return 'brk'
 
     __repr__ = __str__
-

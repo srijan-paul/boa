@@ -109,8 +109,7 @@ class Coder:
             'body': self.emit(stat.body)
         })
 
-    def emit_While(self, stat):
-        exp = self.emit(stat.cond)
+    def emit_Loop(self, stat):
         body = self.emit(stat.body)
 
         return dedent(f"""

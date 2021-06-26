@@ -3,9 +3,9 @@ import driver
 import inference
 
 src = """
-z = 'mystr'
-x = 's'
+def fun(a, b):
+	return a + b
 """
 
 tree = ast.parse(src)
-print(driver.compile_py(src))
+print(ast.dump(tree))

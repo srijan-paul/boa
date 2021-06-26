@@ -140,11 +140,18 @@ class ToIR:
 
         iter_call = stat.iter
 
+        # Enter the body of the loop
+        body = ir.Seq()
+        prev_body = self.body
+        self.body = body
+
+        # compile from, to, step
         from_ = self.do_exp(iter_call.args[0])
         to = self.do_exp(iter_call.args[1])
         step = self.do_exp(iter_call.args[2]) if len(iter_call.args) == 3 else None
 
-        body = self.compile_block(stat.body)
+        # Exit the body of the loop
+        self.body = self.prev_body
         self.emit(ir.For(ir.LocalVar(loc_id), from_, to, step, body))
 
     def do_while(self, stat):
@@ -166,7 +173,7 @@ class ToIR:
             self.do_stat(stat)
 
         self.body = prev_body
-        self.emit(ir.While(cond_exp, body))
+        self.emit(ir.Loop(body))
 
     def do_if(self, stat):
         cond_exp = self.do_exp(stat.test)

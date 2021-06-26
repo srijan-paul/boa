@@ -1,5 +1,2 @@
-x = 1
-y = 0
-while y < 10:
-    y = y + 1
-print(y)
+for i in range(1, 2):
+    a = 1

@@ -1,5 +1,5 @@
 import ast
-from er_types import TypeVar, TypeStr, TypeInt, TypeNum, TypeBool, Type, types_equal
+from er_types import TypeVar, TypeStr, TypeErr, TypeNum, TypeBool, Type, types_equal, traits
 import debug
 from error_report import report
 from builtins_ import builtins
@@ -13,6 +13,22 @@ def visitor_error(self, msg, node):
 
 
 ast.NodeVisitor.error = visitor_error
+
+op_typs = {
+    'Add': [['num', 'num', TypeNum], ['str', 'str', TypeStr]],
+    'Sub': [['num', 'num', TypeNum]],
+    'Div': [['num', 'num', TypeNum]],
+    'Mult': [['num', 'num', TypeNum], ['num', 'str', TypeStr]],
+    'Mod': [['num', 'num', TypeNum]],
+}
+
+op_lexemes = {
+    'Add': '+',
+    'Mult': '*',
+    'Div': '/',
+    'Sub': '-',
+    'Mod': '%',
+}
 
 
 def classname(obj):
@@ -42,6 +58,25 @@ class TypeGenerator(ast.NodeVisitor):
 
     def assign_typvar(self, node):
         node._type = self.generate_var()
+
+    def check_binop(self, ltyp, op, rtyp, node):
+        ltag = ltyp.tag
+        rtag = rtyp.tag
+
+        if not op in op_typs:
+            self.error(f"Operator '{op}' not supported.", node)
+            return TypeErr()
+
+        op_rules = op_typs[op]
+        for rule in op_rules:
+            assert len(rule) == 3
+            l, r, res = rule[0], rule[1], rule[2]
+            if ltag == l and rtag == r:
+                return res()
+
+        assert op in op_lexemes
+        self.error(f"Cannot apply operator '{op_lexemes[op]}' to types: '{ltyp}' and '{rtyp}'.", node)
+        return TypeErr()
 
     # Visitor methods
 
@@ -101,12 +136,29 @@ class TypeGenerator(ast.NodeVisitor):
             self.error(f"expected 2-3 arguments for range based for-loop (found {len(iter_call.args)})", iter_call)
             return False
 
-        self.visit(iter_call.args[0])
-        self.visit(iter_call.args[1])
+        from_, to = iter_call.args[0], iter_call.args[1]
+
+        init_typ = self.visit(from_)
+        limit_typ = self.visit(to)
+
+        if init_typ.tag != 'num':
+            self.error("first argument to 'range' must be a number.", from_)
+            return TypeErr()
+
+        if limit_typ.tag != 'num':
+            self.error("second argument to 'range' must be numeric.", to)
+            return TypeErr()
+
         if len(iter_call.args) == 3:
-            self.visit(iter_call.args[2])
+            step_typ = self.visit(iter_call.args[2])
+            if step_typ._tag != 'num':
+                self.error(f"third argument to 'range' must be numeric.", iter_call.args[2])
+                return TypeErr()
 
         self.visit_stats(stat.body)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        pass
 
     # TODO: optimize trivial operations like 1 * 2, or other
     # cases where the LHS and RHS types are known
@@ -118,12 +170,19 @@ class TypeGenerator(ast.NodeVisitor):
         if not op in ['Add', 'Mult', 'Sub', 'Div']:
             self.error(f"Operator '{op}' not supported", node)
 
-        self.assign_typvar(node)
+        ltyp = node.left._type
+        rtyp = node.right._type
+
+        node._type = self.check_binop(ltyp, op, rtyp, node)
+
         return node._type
 
     def visit_If(self, node: ast.If):
-        self.visit(node.test)
-        self.visit_stats(node.body)
+        cond_typ = self.visit(node.test)
+        if not cond_typ or cond_typ.tag != 'bool':
+            self.error("'if' condition must be a boolean.", node.test)
+            return TypeErr()
+        return self.visit_stats(node.body)
 
     def visit_While(self, node: ast.While):
         self.visit(node.test)
@@ -136,7 +195,6 @@ class TypeGenerator(ast.NodeVisitor):
         So `1 < 2 < 3` is not valid. But `1 < 2 and 2 < 3` is valid."""
         left = node.left
         right = node.comparators[0]
-        op = node.ops[0]
 
         if len(node.ops) != 1:
             self.error("Chained comparisons are not supported yet.", node.ops[0])
@@ -259,8 +317,11 @@ class EqGenerator(ast.NodeVisitor):
             self.error(f"expected 2-3 arguments for range based for-loop (found {len(iter_call.args)})", iter_call)
             return False
 
-        self.visit(iter_call.args[0])
-        self.visit(iter_call.args[1])
+        from_, to = iter_call.args[0], iter_call.args[1]
+
+        init_typ = self.visit(from_)
+        limit_typ = self.visit(to)
+
         if len(iter_call.args) == 3:
             self.visit(iter_call.args[2])
 
@@ -306,19 +367,20 @@ class EqGenerator(ast.NodeVisitor):
             - *  : (int, int) -> int
             - /  : (int, int) -> int
             - %  : (int, int) -> int
-            - >  : (int, int) -> bool
-            - <  : (int, int) -> bool
-            - >= : (int, int) -> bool
-            - <= : (int, int) -> bool
-            - == : (T, T) -> bool
-            - != : (T, T) -> bool
         """
         self.visit(node.left)
         self.visit(node.right)
 
-        self.eqs.append(Equation(node.left._type, TypeNum(), node.left))
-        self.eqs.append(Equation(node.right._type, TypeNum(), node.right))
-        self.eqs.append(Equation(node._type, TypeNum(), node))
+        ltyp, rtyp, res_typ = None, None, None
+        if classname(node.op) == 'Add':
+            ltyp, rtyp = traits.Addable, traits.Addable
+            res_typ = traits.Addable.effect()
+        else:
+            ltyp, rtyp, res_typ = TypeNum(), TypeNum(), TypeNum()
+
+        self.eqs.append(Equation(node.left._type, ltyp, node.left))
+        self.eqs.append(Equation(node.right._type, rtyp, node.right))
+        self.eqs.append(Equation(node._type, res_typ, node))
 
     def generic_visit(self, node):
         print(f'Eq generation: skipping: {classname(node)}')
@@ -394,17 +456,19 @@ def infer_types(ast, src, log=False):
     if log:
         debug.dump_vars(src, ast)
 
+    return True, None
+
     # 2. Generate Type Equations
     eqs = EqGenerator(ast).generate()
     if log:
         debug.dump_eqs(src, eqs)
 
-    # 3. Use unification to derive the types [TODO]
+    # 3. Use unification to derive the types
     typsub, ok = solve_eqs(eqs)
     if not ok:
         err = g_unify_error
-        g_unify_error = False 
-        return False, err 
+        g_unify_error = False
+        return False, err
 
     if log:
         print('\n--- Substitutions ---\n')

@@ -6,14 +6,19 @@ class Type:
         self.tag = tag
         self.is_primitive = is_primitive
 
+        # the type traits implemented by this type
+        self.traits = {}
+
     def __str__(self):
-        return self.tag 
+        return self.tag
 
     def __repr__(self):
         return self.tag
 
 # Only used for specifying the type of
 # the exit code
+
+
 class TypeInt(Type):
     def __init__(self):
         super().__init__('int', True)
@@ -43,28 +48,29 @@ class TypeVar(Type):
 
     __repr__ = __str__
 
+
 class TypeFunc(Type):
     def __init__(self, arg_types, ret_type):
         assert isinstance(arg_types, list) and isinstance(ret_type, Type)
         self.arg_types = arg_types
-        self.ret_type  = ret_type
-
+        self.ret_type = ret_type
 
     def __str__(self):
         arg_strs = [str(typ) for typ in self.arg_types]
         return f"({','.join(arg_strs)}) -> {str(self.ret_type)} "
 
-
     __repr__ = __str__
+
 
 class TypeAny(Type):
     def __init__(self):
         super().__init__('any')
 
 
-class TypeError(Type):
+class TypeErr(Type):
     def __init__(self):
         super().__init__('< error >')
+
 
 class TypeNone(Type):
     def __init__(self):
@@ -77,6 +83,7 @@ class ConstType(Type):
         self.typ = type
         self.value = val
         self.is_primitive = False
+
 
 Type.primitives = {
     'num': TypeNum,
@@ -109,9 +116,17 @@ class Symbol:
         self.annotation = None
 
 
-class TypeClass:
-    def __init__(self):
+class TypeTrait:
+    def __init__(self, name):
+        self.name = name
+
+    def add_instance(instance: type):
         pass
+
+
+Addable = TypeTrait('Addable')
+
+traits = {Addable}
 
 
 def types_equal(lhs, rhs):
